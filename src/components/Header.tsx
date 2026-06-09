@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import ClearChatButton from '@/components/ClearChatButton'
 import ModeToggle from '@/components/ModeToggle'
 
 const Header = () => {
@@ -9,7 +10,10 @@ const Header = () => {
         <Link href="/" className="text-lg font-semibold tracking-tight">
           Sosie
         </Link>
-        <ModeToggle />
+        <div className="flex items-center gap-1">
+          <ClearChatButton />
+          <ModeToggle />
+        </div>
       </div>
     </header>
   )

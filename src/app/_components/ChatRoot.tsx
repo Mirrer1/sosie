@@ -12,9 +12,12 @@ import ImageLightbox from '@/components/ImageLightbox'
 import ProductGrid from '@/components/ProductGrid'
 import ToolStatus from '@/components/ToolStatus'
 import TypingIndicator from '@/components/TypingIndicator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { type SearchCatalogOutput } from '@/types/tool'
 import { validateImage } from '@/utils/image'
+
+const STORAGE_KEY = 'sosie:messages'
 
 // File을 base64 data URL로 변환
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -28,11 +31,12 @@ const fileToDataUrl = (file: File): Promise<string> => {
 
 // 채팅 페이지 루트
 const ChatRoot = () => {
-  const { messages, sendMessage, status } = useChat()
+  const { messages, sendMessage, setMessages, status } = useChat()
   const [input, setInput] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [isHydrated, setIsHydrated] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const dragCounter = useRef(0)
 
@@ -112,6 +116,46 @@ const ChatRoot = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
   }, [messages])
 
+  // 마운트 시 localStorage에서 대화 히스토리 복원
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as typeof messages
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed)
+        }
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+    setIsHydrated(true)
+  }, [setMessages])
+
+  // ClearChatButton 이벤트 수신
+  useEffect(() => {
+    const handler = () => {
+      setMessages([])
+      setInput('')
+      setImageFile(null)
+    }
+    window.addEventListener('sosie:clear-chat', handler)
+    return () => window.removeEventListener('sosie:clear-chat', handler)
+  }, [setMessages])
+
+  // 메시지 변경 시 localStorage에 자동 저장
+  useEffect(() => {
+    if (messages.length === 0) {
+      localStorage.removeItem(STORAGE_KEY)
+      return
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+    } catch {
+      // 저장 용량 초과 등은 무시
+    }
+  }, [messages])
+
   return (
     <main
       onDragEnter={handleDragEnter}
@@ -121,10 +165,24 @@ const ChatRoot = () => {
       className="relative flex min-h-0 flex-1 flex-col"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-        {messages.length === 0 ? (
-          <ChatWelcome />
+        {!isHydrated ? (
+          <div className="animate-in fade-in mx-auto w-full max-w-3xl space-y-4 px-4 pt-6 pb-10 duration-300">
+            <div className="flex justify-end">
+              <Skeleton className="h-10 w-40 rounded-2xl rounded-br-sm" />
+            </div>
+            <div className="flex justify-start">
+              <Skeleton className="h-24 w-3/5 rounded-2xl rounded-bl-sm" />
+            </div>
+            <div className="flex justify-end">
+              <Skeleton className="h-10 w-32 rounded-2xl rounded-br-sm" />
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="animate-in fade-in flex flex-1 flex-col duration-300">
+            <ChatWelcome />
+          </div>
         ) : (
-          <div className="mx-auto w-full max-w-3xl space-y-3 px-4 pt-6 pb-10">
+          <div className="animate-in fade-in mx-auto w-full max-w-3xl space-y-3 px-4 pt-6 pb-10 duration-300">
             {messages.map((msg) => (
               <div key={msg.id} className="space-y-2">
                 {msg.parts.map((part, idx) => {
