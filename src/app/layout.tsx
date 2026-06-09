@@ -1,0 +1,36 @@
+import type { Metadata } from 'next'
+import { Geist_Mono } from 'next/font/google'
+
+import './globals.css'
+import ThemeProvider from '@/components/theme-provider'
+
+import 'pretendard/dist/web/variable/pretendardvariable.css'
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+})
+
+export const metadata: Metadata = {
+  title: 'Sosie — 닮은 옷 다 모아드려요',
+  description: '트렌드 추종형 쇼핑을 위한 AI 에이전트 도우미',
+}
+
+const RootLayout = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <html lang="ko" className={`${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="flex min-h-full flex-col">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+
+export default RootLayout
