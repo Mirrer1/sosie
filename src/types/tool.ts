@@ -17,3 +17,24 @@ export const searchCatalogOutputSchema = z.object({
 
 export type SearchCatalogInput = z.infer<typeof searchCatalogInputSchema>
 export type SearchCatalogOutput = z.infer<typeof searchCatalogOutputSchema>
+
+// comparePrices Tool 입력
+export const comparePricesInputSchema = z.object({
+  productName: z.string().describe('상품명 (예: "유니폼브릿지 발마칸 싱글 코트")'),
+})
+
+// comparePrices Tool 출력
+export const comparePricesOutputSchema = z.object({
+  sources: z.array(
+    z.object({
+      seller: z.string(),
+      price: z.number().int().nonnegative(),
+      url: z.string().url(),
+      imageUrl: z.string().url().optional(),
+      title: z.string().optional(),
+    }),
+  ),
+})
+
+export type ComparePricesInput = z.infer<typeof comparePricesInputSchema>
+export type ComparePricesOutput = z.infer<typeof comparePricesOutputSchema>

@@ -7,6 +7,7 @@ type ToolStatusProps = {
 
 const TOOL_LABELS: Record<string, string> = {
   'tool-searchCatalog': '카탈로그 검색',
+  'tool-comparePrices': '판매처 가격 비교',
 }
 
 // AI Agent의 Tool 호출 단계를 사용자에게 노출
