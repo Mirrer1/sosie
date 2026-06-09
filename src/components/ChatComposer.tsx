@@ -13,7 +13,9 @@ type ChatComposerProps = {
   disabled?: boolean
 }
 
+// 채팅 입력창
 const ChatComposer = ({ value, onChange, onSubmit, disabled = false }: ChatComposerProps) => {
+  // 줄바꿈
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
       e.preventDefault()

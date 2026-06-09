@@ -5,9 +5,11 @@ import { useTheme } from 'next-themes'
 
 import { Button } from '@/components/ui/button'
 
+// 테마 모드 토글
 const ModeToggle = () => {
   const { resolvedTheme, setTheme } = useTheme()
 
+  // 테마 전환
   const handleToggle = () => {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   }

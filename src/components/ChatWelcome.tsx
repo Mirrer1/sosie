@@ -4,6 +4,7 @@ const SEED_EXAMPLES = [
   '이런 옷 비슷한 거 찾아줘',
 ]
 
+// 메시지 없을 때 환영 화면
 const ChatWelcome = () => {
   return (
     <div className="mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center">

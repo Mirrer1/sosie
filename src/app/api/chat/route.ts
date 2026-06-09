@@ -3,6 +3,7 @@ import { type UIMessage, convertToModelMessages, streamText } from 'ai'
 
 export const maxDuration = 30
 
+// Gemini Streaming 채팅 메세지 응답
 export const POST = async (req: Request) => {
   const { messages }: { messages: UIMessage[] } = await req.json()
 
