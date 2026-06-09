@@ -1,31 +1,110 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { useEffect, useRef, useState } from 'react'
+import { ImageUpIcon } from 'lucide-react'
+import { type DragEvent, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 import ChatComposer from '@/components/ChatComposer'
 import ChatMessage from '@/components/ChatMessage'
 import ChatWelcome from '@/components/ChatWelcome'
+import ImageLightbox from '@/components/ImageLightbox'
 import ProductGrid from '@/components/ProductGrid'
 import ToolStatus from '@/components/ToolStatus'
 import TypingIndicator from '@/components/TypingIndicator'
+import { cn } from '@/lib/utils'
 import { type SearchCatalogOutput } from '@/types/tool'
+import { validateImage } from '@/utils/image'
+
+// File을 base64 data URL로 변환
+const fileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
 // 채팅 페이지 루트
 const ChatRoot = () => {
   const { messages, sendMessage, status } = useChat()
   const [input, setInput] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const dragCounter = useRef(0)
 
   const isLoading = status === 'streaming' || status === 'submitted'
   const lastMessage = messages[messages.length - 1]
   const showTyping = isLoading && lastMessage?.role === 'user'
 
+  // 이미지 검증 후 설정
+  const acceptImage = (file: File) => {
+    const error = validateImage(file)
+    if (error) {
+      toast.error(error)
+      return
+    }
+    setImageFile(file)
+  }
+
   // 입력 전송
-  const handleSubmit = () => {
-    if (!input.trim() || isLoading) return
-    sendMessage({ text: input })
+  const handleSubmit = async () => {
+    if ((!input.trim() && !imageFile) || isLoading) return
+
+    if (imageFile) {
+      const dataUrl = await fileToDataUrl(imageFile)
+      sendMessage({
+        text: input,
+        files: [
+          {
+            type: 'file',
+            mediaType: imageFile.type,
+            filename: imageFile.name,
+            url: dataUrl,
+          },
+        ],
+      })
+    } else {
+      sendMessage({ text: input })
+    }
+
     setInput('')
+    setImageFile(null)
+  }
+
+  // 드래그 진입, Files 타입 확인하고 counter 증가
+  const handleDragEnter = (e: DragEvent<HTMLElement>) => {
+    e.preventDefault()
+    if (!Array.from(e.dataTransfer.types).includes('Files')) return
+    dragCounter.current += 1
+    setIsDragging(true)
+  }
+
+  // 드래그 떠남, counter 감소 후 0이면 오버레이 닫기
+  const handleDragLeave = (e: DragEvent<HTMLElement>) => {
+    e.preventDefault()
+    dragCounter.current -= 1
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0
+      setIsDragging(false)
+    }
+  }
+
+  // 드래그 오버, drop 허용을 위해 preventDefault
+  const handleDragOver = (e: DragEvent<HTMLElement>) => {
+    e.preventDefault()
+  }
+
+  // 드롭, 첫 파일 가져와서 검증
+  const handleDrop = (e: DragEvent<HTMLElement>) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) acceptImage(file)
   }
 
   // 메시지 변경 시 하단으로 자동 스크롤
@@ -34,7 +113,13 @@ const ChatRoot = () => {
   }, [messages])
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col">
+    <main
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className="relative flex min-h-0 flex-1 flex-col"
+    >
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">
         {messages.length === 0 ? (
           <ChatWelcome />
@@ -50,6 +135,31 @@ const ChatRoot = () => {
                         role={msg.role === 'assistant' ? 'assistant' : 'user'}
                         content={part.text}
                       />
+                    )
+                  }
+
+                  if (part.type === 'file' && part.mediaType?.startsWith('image/')) {
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          'flex w-full',
+                          msg.role === 'user' ? 'justify-end' : 'justify-start',
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setLightboxUrl(part.url)}
+                          aria-label="이미지 확대"
+                          className="block h-48 w-48 overflow-hidden rounded-2xl border transition-opacity hover:opacity-90"
+                        >
+                          <img
+                            src={part.url}
+                            alt="첨부 이미지"
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      </div>
                     )
                   }
 
@@ -83,9 +193,22 @@ const ChatRoot = () => {
       <ChatComposer
         value={input}
         onChange={setInput}
+        imageFile={imageFile}
+        onImageChange={setImageFile}
         onSubmit={handleSubmit}
         disabled={isLoading}
       />
+
+      {isDragging && (
+        <div className="bg-background/80 pointer-events-none absolute inset-0 z-40 flex items-center justify-center backdrop-blur-sm">
+          <div className="border-primary text-primary flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-12 py-10">
+            <ImageUpIcon className="h-12 w-12" />
+            <p className="text-sm font-medium">이미지를 여기에 놓으세요</p>
+          </div>
+        </div>
+      )}
+
+      <ImageLightbox src={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </main>
   )
 }
