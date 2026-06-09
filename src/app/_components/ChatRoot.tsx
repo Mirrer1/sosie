@@ -6,8 +6,10 @@ import { useEffect, useRef, useState } from 'react'
 import ChatComposer from '@/components/ChatComposer'
 import ChatMessage from '@/components/ChatMessage'
 import ChatWelcome from '@/components/ChatWelcome'
+import ProductGrid from '@/components/ProductGrid'
 import ToolStatus from '@/components/ToolStatus'
 import TypingIndicator from '@/components/TypingIndicator'
+import { type SearchCatalogOutput } from '@/types/tool'
 
 // 채팅 페이지 루트
 const ChatRoot = () => {
@@ -50,6 +52,22 @@ const ChatRoot = () => {
                       />
                     )
                   }
+
+                  if (
+                    part.type === 'tool-searchCatalog' &&
+                    'state' in part &&
+                    part.state === 'output-available' &&
+                    part.output
+                  ) {
+                    const output = part.output as SearchCatalogOutput
+                    return (
+                      <div key={idx} className="space-y-3">
+                        <ToolStatus toolType={part.type} state={part.state} />
+                        {output.products.length > 0 && <ProductGrid products={output.products} />}
+                      </div>
+                    )
+                  }
+
                   if (part.type.startsWith('tool-') && 'state' in part && part.state) {
                     return <ToolStatus key={idx} toolType={part.type} state={part.state} />
                   }

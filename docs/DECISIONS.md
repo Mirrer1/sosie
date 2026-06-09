@@ -142,3 +142,26 @@
 - ✅ AI 협업 진정성
 - ✅ docs 2개로 압축해 유지보수 부담 적음
 - ❌ 단일 README 대비 약간의 분산
+
+---
+
+## ADR-006: 외부 이미지는 `<img>` 사용, `next/image` 미도입
+
+**상태**: Accepted
+
+**배경**: ProductCard에서 무신사·29CM·네이버쇼핑·브랜드몰 등 다양한 도메인 이미지를 표시.
+
+**결정**: 일반 `<img>` 태그 사용. `eslint.config.mjs`에서 `@next/next/no-img-element` 룰 끔.
+
+**이유**:
+- `next/image`는 `next.config.ts`의 `remotePatterns`에 도메인별 등록 필요
+- 카탈로그 확장 시 다양한 쇼핑몰/브랜드몰 도메인 추가됨 → 매번 config 수정 부담
+- MVP 단계 이미지 최적화 이득(LCP/lazy)이 도메인 관리 비용보다 작음
+
+**트레이드오프**:
+- ✅ 도메인 자유 추가
+- ✅ 단순한 컴포넌트 코드 (인라인 disable 주석 X)
+- ❌ Next 자동 최적화 미적용 (LCP/lazy load 수동 처리)
+
+**향후 재검토**:
+- 실서비스 단계 + 도메인이 5~10개로 좁혀지면 `next/image` 마이그레이션 (정해진 파트너 도메인만 사용 시점)
