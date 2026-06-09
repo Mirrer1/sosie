@@ -7,6 +7,7 @@ import ChatComposer from '@/components/ChatComposer'
 import ChatMessage from '@/components/ChatMessage'
 import ChatWelcome from '@/components/ChatWelcome'
 import ToolStatus from '@/components/ToolStatus'
+import TypingIndicator from '@/components/TypingIndicator'
 
 // 채팅 페이지 루트
 const ChatRoot = () => {
@@ -15,6 +16,8 @@ const ChatRoot = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const isLoading = status === 'streaming' || status === 'submitted'
+  const lastMessage = messages[messages.length - 1]
+  const showTyping = isLoading && lastMessage?.role === 'user'
 
   // 입력 전송
   const handleSubmit = () => {
@@ -54,6 +57,7 @@ const ChatRoot = () => {
                 })}
               </div>
             ))}
+            {showTyping && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </div>
         )}

@@ -38,3 +38,20 @@ export const comparePricesOutputSchema = z.object({
 
 export type ComparePricesInput = z.infer<typeof comparePricesInputSchema>
 export type ComparePricesOutput = z.infer<typeof comparePricesOutputSchema>
+
+// parseProductUrl Tool 입력
+export const parseProductUrlInputSchema = z.object({
+  url: z.string().url().describe('상품 페이지 URL (무신사/29CM/공식몰 등)'),
+})
+
+// parseProductUrl Tool 출력
+export const parseProductUrlOutputSchema = z.object({
+  title: z.string(),
+  imageUrl: z.string().url().optional(),
+  description: z.string().optional(),
+  siteName: z.string().optional(),
+  sourceUrl: z.string().url(),
+})
+
+export type ParseProductUrlInput = z.infer<typeof parseProductUrlInputSchema>
+export type ParseProductUrlOutput = z.infer<typeof parseProductUrlOutputSchema>
