@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import ChatComposer from '@/components/ChatComposer'
 import ChatMessage from '@/components/ChatMessage'
 import ChatWelcome from '@/components/ChatWelcome'
+import ToolStatus from '@/components/ToolStatus'
 
 // 채팅 페이지 루트
 const ChatRoot = () => {
@@ -33,16 +34,25 @@ const ChatRoot = () => {
         {messages.length === 0 ? (
           <ChatWelcome />
         ) : (
-          <div className="mx-auto w-full max-w-3xl space-y-4 px-4 pt-6 pb-10">
+          <div className="mx-auto w-full max-w-3xl space-y-3 px-4 pt-6 pb-10">
             {messages.map((msg) => (
-              <ChatMessage
-                key={msg.id}
-                role={msg.role === 'assistant' ? 'assistant' : 'user'}
-                content={msg.parts
-                  .filter((p) => p.type === 'text')
-                  .map((p) => p.text)
-                  .join('')}
-              />
+              <div key={msg.id} className="space-y-2">
+                {msg.parts.map((part, idx) => {
+                  if (part.type === 'text') {
+                    return (
+                      <ChatMessage
+                        key={idx}
+                        role={msg.role === 'assistant' ? 'assistant' : 'user'}
+                        content={part.text}
+                      />
+                    )
+                  }
+                  if (part.type.startsWith('tool-') && 'state' in part && part.state) {
+                    return <ToolStatus key={idx} toolType={part.type} state={part.state} />
+                  }
+                  return null
+                })}
+              </div>
             ))}
             <div ref={messagesEndRef} />
           </div>

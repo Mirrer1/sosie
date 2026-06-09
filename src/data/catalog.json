@@ -1,0 +1,57 @@
+[
+  {
+    "id": "uniformbridge-balmacaan-camel",
+    "category": "발마칸 코트",
+    "brand": "유니폼브릿지",
+    "name": "발마칸 싱글 코트",
+    "price": 168000,
+    "imageUrl": "https://image.msscdn.net/images/goods_img/placeholder/uniformbridge-balmacaan.jpg",
+    "productUrl": "https://www.musinsa.com/products/uniformbridge-balmacaan-camel",
+    "tags": ["오버핏", "캐멀", "캐주얼", "데일리"],
+    "description": "캐멀톤 오버핏 발마칸 코트. 미니멀하고 데일리 활용도 높음."
+  },
+  {
+    "id": "thisisneverthat-wide-denim",
+    "category": "와이드 진",
+    "brand": "디스이즈네버댓",
+    "name": "스트레이트 와이드 데님",
+    "price": 119000,
+    "imageUrl": "https://image.msscdn.net/images/goods_img/placeholder/tnt-wide-denim.jpg",
+    "productUrl": "https://www.musinsa.com/products/thisisneverthat-wide-denim",
+    "tags": ["와이드핏", "인디고", "데일리", "스트릿"],
+    "description": "스트레이트 핏 와이드 데님. 빈티지 인디고 컬러로 어떤 상의와도 잘 어울림."
+  },
+  {
+    "id": "covernat-cargo-olive",
+    "category": "카고 팬츠",
+    "brand": "커버낫",
+    "name": "C 로고 카고 팬츠",
+    "price": 89000,
+    "imageUrl": "https://image.msscdn.net/images/goods_img/placeholder/covernat-cargo.jpg",
+    "productUrl": "https://www.musinsa.com/products/covernat-cargo-olive",
+    "tags": ["루즈핏", "올리브", "캐주얼", "스트릿"],
+    "description": "올리브 컬러 루즈핏 카고 팬츠. 다양한 포켓 디테일이 포인트."
+  },
+  {
+    "id": "andersson-bell-knit-charcoal",
+    "category": "니트 풀오버",
+    "brand": "앤더슨벨",
+    "name": "디스트로이드 풀오버 니트",
+    "price": 198000,
+    "imageUrl": "https://image.msscdn.net/images/goods_img/placeholder/anderssonbell-knit.jpg",
+    "productUrl": "https://www.musinsa.com/products/andersson-bell-knit-charcoal",
+    "tags": ["루즈핏", "차콜", "유니크", "디자인"],
+    "description": "디스트로이드 디테일이 들어간 차콜 풀오버. 개성있는 스타일링에 좋음."
+  },
+  {
+    "id": "ifit-trucker-jacket-beige",
+    "category": "워크자켓",
+    "brand": "아이핏",
+    "name": "트러커 자켓",
+    "price": 79000,
+    "imageUrl": "https://image.msscdn.net/images/goods_img/placeholder/ifit-trucker.jpg",
+    "productUrl": "https://www.musinsa.com/products/ifit-trucker-jacket-beige",
+    "tags": ["오버핏", "베이지", "데일리", "캐주얼"],
+    "description": "베이지 오버핏 트러커 자켓. 가성비 좋고 활용도 높은 데일리 아이템."
+  }
+]
