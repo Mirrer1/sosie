@@ -1,23 +1,23 @@
 'use client'
 
 import { ImageIcon, SendIcon } from 'lucide-react'
-import { type KeyboardEvent, useState } from 'react'
+import { type KeyboardEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 
-const ChatComposer = () => {
-  const [value, setValue] = useState('')
+type ChatComposerProps = {
+  value: string
+  onChange: (value: string) => void
+  onSubmit: () => void
+  disabled?: boolean
+}
 
-  const handleSend = () => {
-    if (!value.trim()) return
-    setValue('')
-  }
-
+const ChatComposer = ({ value, onChange, onSubmit, disabled = false }: ChatComposerProps) => {
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
       e.preventDefault()
-      handleSend()
+      onSubmit()
     }
   }
 
@@ -30,18 +30,19 @@ const ChatComposer = () => {
           </Button>
           <Textarea
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="찾고 싶은 옷을 자유롭게 알려주세요"
             className="min-h-0 flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
             rows={1}
+            disabled={disabled}
           />
           <Button
             size="icon"
             className="shrink-0"
             aria-label="보내기"
-            onClick={handleSend}
-            disabled={!value.trim()}
+            onClick={onSubmit}
+            disabled={disabled || !value.trim()}
           >
             <SendIcon className="h-4 w-4" />
           </Button>
