@@ -9,13 +9,16 @@ import ChatComposer from '@/components/ChatComposer'
 import ChatMessage from '@/components/ChatMessage'
 import ChatWelcome from '@/components/ChatWelcome'
 import ImageLightbox from '@/components/ImageLightbox'
+import OnboardingDialog from '@/components/OnboardingDialog'
 import ProductGrid from '@/components/ProductGrid'
 import ToolStatus from '@/components/ToolStatus'
 import TypingIndicator from '@/components/TypingIndicator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { type Profile } from '@/types/profile'
 import { type SearchProductsOutput } from '@/types/tool'
 import { validateImage } from '@/utils/image'
+import { hasProfile, loadProfile, saveProfile } from '@/utils/profile'
 
 const STORAGE_KEY = 'sosie:messages'
 
@@ -37,6 +40,8 @@ const ChatRoot = () => {
   const [isDragging, setIsDragging] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const dragCounter = useRef(0)
 
@@ -116,7 +121,8 @@ const ChatRoot = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
   }, [messages])
 
-  // 마운트 시 localStorage에서 대화 히스토리 복원
+  // 마운트 시 localStorage에서 대화 히스토리, 프로필 복원
+  // 첫 진입이면 온보딩
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -129,8 +135,30 @@ const ChatRoot = () => {
     } catch {
       localStorage.removeItem(STORAGE_KEY)
     }
+    setProfile(loadProfile())
+    if (!hasProfile()) setShowOnboarding(true)
     setIsHydrated(true)
   }, [setMessages])
+
+  // 헤더의 프로필 수정 버튼에서 발생하는 이벤트 수신
+  useEffect(() => {
+    const handler = () => setShowOnboarding(true)
+    window.addEventListener('sosie:open-profile', handler)
+    return () => window.removeEventListener('sosie:open-profile', handler)
+  }, [])
+
+  // 온보딩 완료 시 프로필 저장
+  const handleOnboardingSave = (next: Profile) => {
+    saveProfile(next)
+    setProfile(next)
+    setShowOnboarding(false)
+  }
+
+  // 온보딩 닫기
+  const handleOnboardingClose = () => {
+    if (!hasProfile()) saveProfile({})
+    setShowOnboarding(false)
+  }
 
   // ClearChatButton 이벤트 수신
   useEffect(() => {
@@ -267,6 +295,13 @@ const ChatRoot = () => {
       )}
 
       <ImageLightbox src={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+
+      <OnboardingDialog
+        open={showOnboarding}
+        initialProfile={profile}
+        onSave={handleOnboardingSave}
+        onClose={handleOnboardingClose}
+      />
     </main>
   )
 }
