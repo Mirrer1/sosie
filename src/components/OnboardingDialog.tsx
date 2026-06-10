@@ -1,6 +1,6 @@
 'use client'
 
-import { type KeyboardEvent, useState } from 'react'
+import { type KeyboardEvent, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -42,6 +42,17 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
   const [size, setSize] = useState<Profile['size']>(initialProfile?.size)
   const [budget, setBudget] = useState<Profile['budget']>(initialProfile?.budget)
   const [brandInput, setBrandInput] = useState('')
+
+  // 열릴 때마다 현재 프로필로 state 재동기화
+  useEffect(() => {
+    if (!open) return
+    setStyles(initialProfile?.styles ?? [])
+    setBrands(initialProfile?.brands ?? [])
+    setSize(initialProfile?.size)
+    setBudget(initialProfile?.budget)
+    setStep(1)
+    setBrandInput('')
+  }, [open, initialProfile])
 
   // 자유 입력 브랜드 추가
   const addBrand = () => {

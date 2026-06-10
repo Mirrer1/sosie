@@ -11,6 +11,7 @@ const TOOL_LABELS: Record<string, string> = {
   'tool-searchProducts': '무신사 상품 검색',
   'tool-comparePrices': '판매처 가격 비교',
   'tool-parseProductUrl': 'URL 정보 추출',
+  'tool-updateProfile': '프로필 업데이트',
 }
 
 // AI Agent의 Tool 호출 단계를 사용자에게 노출

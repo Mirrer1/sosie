@@ -4,6 +4,7 @@ import { type UIMessage, convertToModelMessages, stepCountIs, streamText } from 
 import { comparePrices } from '@/lib/tools/comparePrices'
 import { parseProductUrl } from '@/lib/tools/parseProductUrl'
 import { searchProducts } from '@/lib/tools/searchProducts'
+import { updateProfile } from '@/lib/tools/updateProfile'
 import { type Profile } from '@/types/profile'
 
 export const maxDuration = 30
@@ -49,6 +50,27 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 - 프로필 근거를 자연스럽게 녹임
 - 길게 늘어놓지 말고 핵심만, 카드로 시각화
 
+**원칙 8: 대화 중 프로필 단서 감지 → updateProfile 호출**
+- 사용자가 자기 취향을 흘리거나 명시적으로 바꾸려 하면 updateProfile Tool 호출
+  - "사실 빈티지도 좋아해" → styles에 "빈티지" 추가 (mode: merge)
+  - "예산을 20만원까지로 늘려줘" → budget: { min: 150000, max: 300000 } (mode: merge) — "20만원까지"는 15~30만 프리셋으로 매핑
+  - "이제 무신사 스탠다드 말고 커버낫 위주로 보고싶어" → brands: ["커버낫"] (mode: replace)
+  - "사이즈 M으로 바꿔줘" → size: "M" (mode: merge)
+- 변경 필드만 담아 1회 호출. reason은 한 문장으로 근거
+- 호출 후 답변에 "프로필에 반영했어요" 같이 짧게 언급 (검색 결과가 함께 나오면 자연스럽게 녹임)
+- 검색과 동시에 필요하면 updateProfile + searchProducts 둘 다 호출 가능
+
+**원칙 8-1: budget은 반드시 다음 4개 프리셋 중 하나로만 표현 (UI 칩과 매칭)**
+- { min: 0, max: 50000 } — 5만원 이하
+- { min: 50000, max: 150000 } — 5~15만원
+- { min: 150000, max: 300000 } — 15~30만원
+- { min: 300000 } — 30만원 이상 (max 생략)
+- 사용자가 자유 금액을 말하면 가장 가까운 프리셋으로 매핑
+  - "10만원까지" → 5~15만 (50000~150000)
+  - "20만원까지" / "25만원" → 15~30만 (150000~300000)
+  - "50만원까지" → 30만원 이상 (min 300000)
+- searchProducts의 priceMin/priceMax는 자유롭게 (사용자가 말한 그대로 사용 가능)
+
 ## 예시
 
 사용자(프로필: 캐주얼, 무신사 스탠다드, 5~15만): "청바지 추천해줘"
@@ -69,6 +91,12 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 
 사용자: [옷 사진] "비슷한 거 찾아줘"
 당신의 행동: 이미지에서 키워드 파악 → searchProducts({ keywords: [...] }) 호출
+
+사용자: "사실 나 빈티지도 좋아해, 그쪽도 추천해줄 수 있어?"
+당신의 행동: updateProfile({ styles: ["빈티지"], mode: "merge", reason: "사용자가 빈티지 스타일도 좋아한다고 추가 언급" }) + searchProducts({ keywords: ["빈티지", "셔츠"] }) 호출
+
+사용자: "예산 20만원까지 늘려줘"
+당신의 행동: updateProfile({ budget: { min: 150000, max: 300000 }, mode: "merge", reason: "사용자가 상한 예산 상향 요청, 20만원 → 15~30만 프리셋 매핑" }) 호출
 
 사용자: "안녕"
 당신의 행동: Tool 호출 X, "안녕하세요! 오늘은 어떤 옷 보러 오셨어요?"`
@@ -112,6 +140,7 @@ export const POST = async (req: Request) => {
       searchProducts,
       comparePrices,
       parseProductUrl,
+      updateProfile,
     },
     stopWhen: stepCountIs(5),
   })

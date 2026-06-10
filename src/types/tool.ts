@@ -64,3 +64,48 @@ export const parseProductUrlOutputSchema = z.object({
 
 export type ParseProductUrlInput = z.infer<typeof parseProductUrlInputSchema>
 export type ParseProductUrlOutput = z.infer<typeof parseProductUrlOutputSchema>
+
+// updateProfile Tool 입력
+export const updateProfileInputSchema = z.object({
+  styles: z.array(z.string()).optional().describe('스타일 태그 (예: ["캐주얼", "미니멀"]).'),
+  brands: z.array(z.string()).optional().describe('선호 브랜드 (예: ["무신사 스탠다드"]).'),
+  size: z.enum(['XS', 'S', 'M', 'L', 'XL']).optional(),
+  budget: z
+    .object({
+      min: z.number().int().nonnegative().optional(),
+      max: z.number().int().nonnegative().optional(),
+    })
+    .optional()
+    .describe('예산 범위 (단위 원).'),
+  mode: z
+    .enum(['merge', 'replace'])
+    .default('merge')
+    .describe(
+      'merge: 기존 값에 추가/덮어쓰기 (배열은 합집합). replace: 보낸 필드를 통째로 교체 (배열 비우기 가능).',
+    ),
+  reason: z
+    .string()
+    .describe(
+      '업데이트 근거 한 문장 (예: "사용자가 빈티지 스타일도 좋아한다고 말함"). 답변 톤에 활용.',
+    ),
+})
+
+// updateProfile Tool 출력
+export const updateProfileOutputSchema = z.object({
+  updated: z.object({
+    styles: z.array(z.string()).optional(),
+    brands: z.array(z.string()).optional(),
+    size: z.enum(['XS', 'S', 'M', 'L', 'XL']).optional(),
+    budget: z
+      .object({
+        min: z.number().int().nonnegative().optional(),
+        max: z.number().int().nonnegative().optional(),
+      })
+      .optional(),
+  }),
+  mode: z.enum(['merge', 'replace']),
+  reason: z.string(),
+})
+
+export type UpdateProfileInput = z.infer<typeof updateProfileInputSchema>
+export type UpdateProfileOutput = z.infer<typeof updateProfileOutputSchema>

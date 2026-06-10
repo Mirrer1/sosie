@@ -16,7 +16,7 @@ import TypingIndicator from '@/components/TypingIndicator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { type Profile } from '@/types/profile'
-import { type SearchProductsOutput } from '@/types/tool'
+import { type SearchProductsOutput, type UpdateProfileOutput } from '@/types/tool'
 import { validateImage } from '@/utils/image'
 import { hasProfile, loadProfile, saveProfile } from '@/utils/profile'
 
@@ -44,6 +44,7 @@ const ChatRoot = () => {
   const [profile, setProfile] = useState<Profile | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const dragCounter = useRef(0)
+  const appliedProfileUpdates = useRef<Set<string>>(new Set())
 
   const isLoading = status === 'streaming' || status === 'submitted'
   const lastMessage = messages[messages.length - 1]
@@ -176,6 +177,47 @@ const ChatRoot = () => {
     window.addEventListener('sosie:clear-chat', handler)
     return () => window.removeEventListener('sosie:clear-chat', handler)
   }, [setMessages])
+
+  // updateProfile Tool 결과 감지
+  useEffect(() => {
+    for (const msg of messages) {
+      if (msg.role !== 'assistant') continue
+      for (const part of msg.parts) {
+        if (
+          part.type !== 'tool-updateProfile' ||
+          !('state' in part) ||
+          part.state !== 'output-available' ||
+          !part.output
+        ) {
+          continue
+        }
+        const key = 'toolCallId' in part ? (part.toolCallId as string) : ''
+        if (!key || appliedProfileUpdates.current.has(key)) continue
+
+        const { updated, mode } = part.output as UpdateProfileOutput
+        setProfile((prev) => {
+          const base: Profile = prev ?? {}
+          const next: Profile = { ...base }
+          if (mode === 'replace') {
+            if (updated.styles !== undefined) next.styles = updated.styles
+            if (updated.brands !== undefined) next.brands = updated.brands
+            if (updated.size !== undefined) next.size = updated.size
+            if (updated.budget !== undefined) next.budget = updated.budget
+          } else {
+            if (updated.styles)
+              next.styles = Array.from(new Set([...(base.styles ?? []), ...updated.styles]))
+            if (updated.brands)
+              next.brands = Array.from(new Set([...(base.brands ?? []), ...updated.brands]))
+            if (updated.size !== undefined) next.size = updated.size
+            if (updated.budget) next.budget = updated.budget
+          }
+          saveProfile(next)
+          return next
+        })
+        appliedProfileUpdates.current.add(key)
+      }
+    }
+  }, [messages])
 
   // 메시지 변경 시 localStorage에 자동 저장
   useEffect(() => {
