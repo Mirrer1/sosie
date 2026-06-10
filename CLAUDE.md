@@ -15,10 +15,44 @@
 
 ---
 
-## 현재 상태
+## 현재 상태 (2026-06-09 기준)
 
-- ✅ 기획 완료 (`README.md`, `docs/AGENT.md`, `docs/DECISIONS.md`)
-- 🔜 **다음: Phase 1 — 기반 셋업**
+- ✅ Phase 1 셋업 (Next.js 16 + AI SDK + shadcn + Tailwind v4 + Vitest)
+- ✅ Phase 2 UI 베이스 (헤더 + 다크모드 + 채팅 홈)
+- ✅ Phase 3 채팅 코어 (Gemini Streaming + useChat + 마크다운 + 자동 스크롤)
+- ✅ Phase 4 Tool Calling (3개 Tool 완성: searchCatalog, comparePrices, parseProductUrl)
+- ✅ Phase 5 멀티모달 + 상품 카드 (이미지 입력 3종 + 라이트박스 + ProductGrid + ToolStatus)
+- 🔄 Phase 6 부가 + 마감 (대화 히스토리 localStorage ✅ / 대화 지우기 ✅ / 모바일 반응형 점검 미완)
+- ⏳ Phase 7 배포 + 문서 마무리 (카탈로그 확장 + Vercel 배포 + 시연 영상 + 제출 남음)
+
+**현재 모델**: `gemini-2.5-flash-lite` (free tier 1500/day, 멀티모달, Tool Calling 모두 동작)
+**현재 카탈로그**: `src/data/catalog.json` 5개 (진짜 무신사 상품 데이터, 실제 이미지/URL 박힘)
+
+### 내일 작업 계획 — 컨셉 전환 (2026-06-10)
+
+**기존 한계**: 카탈로그 5개로 추천이 한정됨 → "검색 wrapper" 인상 강함
+
+**새 컨셉**: **"옷 사고 싶은데 뭘 살지 모를 때 같이 골라주는 AI 스타일리스트"**
+
+방향 전환:
+- **카탈로그 폐기** (`catalog.json` + `searchCatalog` Tool 제거)
+- **신규 `searchProducts` Tool** — 네이버 쇼핑 API + `mallName=무신사` 필터로 무신사 전체 풀 검색
+- **사용자 프로필 도입** — 첫 진입 시 스타일/브랜드/사이즈/예산 선택 (선택적, 스킵 가능) → `sosie:profile` localStorage
+- **시스템 프롬프트에 프로필 동적 주입** — 매 요청 시 프로필 한 줄 첨부, 추천에 반영
+- **대화 중 프로필 자동 학습** — 사용자가 좋다/싫다 말한 거 누적
+- **추천 톤 전환** — "여기 상품이요" → "캐주얼 좋아하시니까 이거 어떠세요"
+- **(옵션)** 다른 몰 더 보고 싶을 때 `includeOtherMalls: true`로 재호출
+
+작업량: 5~6시간 예상
+
+순서:
+1. `searchProducts` Tool (네이버 쇼핑 무신사 필터) + `searchCatalog`/catalog.json 폐기
+2. 온보딩 모달 + 프로필 localStorage
+3. 시스템 프롬프트에 프로필 주입 + 톤 강화
+4. 헤더에 프로필 수정 버튼
+5. 시스템 프롬프트에 대화 중 프로필 업데이트 가이드
+6. 문서 갱신 (`README.md`, `docs/AGENT.md`, `docs/DECISIONS.md` — 신규 ADR 추가)
+7. Vercel 배포 + 시연 영상 + 제출
 
 ---
 

@@ -6,10 +6,11 @@
 
 ## 모델 / SDK
 
-- **모델**: Gemini 2.0 Flash (Google AI Studio, 무료 티어)
-- **SDK**: Vercel AI SDK (`ai`, `@ai-sdk/google`)
-- 선정 이유: [`DECISIONS.md`](DECISIONS.md) 참조
-- Streaming + Tool Calling + provider 추상화
+- **모델**: **Gemini 2.5 Flash Lite** (Google AI Studio, free tier 1500/day)
+- **SDK**: Vercel AI SDK v6 (`ai`, `@ai-sdk/google`, `@ai-sdk/react`)
+- 멀티모달 native 지원 (이미지 입력은 별도 Tool 없이 사용자 메시지 file part로 처리)
+- Tool Calling 다단계 (`stopWhen: stepCountIs(5)`)
+- 선정 이유 및 변경 이력: [`DECISIONS.md`](DECISIONS.md) ADR-002 참조
 
 ---
 
@@ -23,9 +24,10 @@
 
 ---
 
-## Tool 4개 명세
+## Tool 3개 명세 (전부 구현 완료)
 
 모든 Tool 입출력은 **Zod 스키마로 강제**. LLM 환각/형식 오류 차단.
+이미지 분석은 별도 Tool 없이 Gemini 멀티모달 native로 처리 (메시지의 file part).
 
 ---
 
@@ -97,33 +99,21 @@
 
 ---
 
-### 2. `analyzeImage`
+### 2. 이미지 입력 (별도 Tool 없음)
 
-**역할**: 사용자가 업로드한 옷 이미지에서 스타일 키워드 추출.
+사용자가 옷 이미지를 첨부하면 메시지의 file part로 Gemini에 직접 전달됨.
+Gemini가 이미지를 분석한 뒤 시스템 프롬프트 가이드에 따라 자동으로 `searchCatalog` Tool을 호출.
 
-**입력 스키마**:
-```ts
-{
-  imageBase64: string    // 사용자 업로드 이미지
-  userHint?: string      // 사용자가 같이 입력한 텍스트 (있다면)
-}
-```
+**UI 흐름**:
+- ChatComposer: 파일 picker / 드래그앤드롭 / 클립보드 paste 3가지 입력 모두 지원
+- 검증: `image/jpeg`, `image/png`, `image/webp` + 5MB 이하 (`src/utils/image.ts`)
+- 미리보기 + 확대 라이트박스
+- ChatRoot에서 base64 data URL로 변환 후 `sendMessage({ text, files: [{ type: 'file', mediaType, filename, url }] })`
 
-**출력 스키마**:
-```ts
-{
-  category: string                     // "발마칸 코트"
-  styleKeywords: string[]              // ["오버핏", "캐멀", "더블브레스트"]
-  estimatedPriceRange?: [number, number]
-  description: string                  // "캐멀톤의 오버핏 발마칸 코트로..."
-}
-```
-
-#### 데이터 소스: Gemini 멀티모달
-
-- Gemini 2.0 Flash 직접 호출 (별도 내부 함수, Tool 내부에서 LLM 한 번 더 부름)
-- 이미지 base64 → 시스템 프롬프트 + 사용자 hint와 함께 전달
-- 응답을 Zod로 검증
+**왜 별도 Tool 안 만들었나**:
+- Gemini 2.5 Flash Lite의 멀티모달이 이미지 이해 + Tool 결정을 한 번에 처리
+- 별도 `analyzeImage` Tool을 만들면 LLM이 두 번 호출돼 비용/지연 증가
+- 단일 step에서 이미지 → searchCatalog 키워드 추출까지 진행 (시스템 프롬프트 원칙 4번)
 
 ---
 
@@ -242,20 +232,20 @@ const { result } = await ogs({ url: 'https://www.musinsa.com/products/...' })
     + 상품 카드 그리드 (4개)
 ```
 
-### 시나리오 B — 이미지 시드
+### 시나리오 B — 이미지 시드 (멀티모달)
 
 ```
-사용자: [옷 사진 업로드] "이거랑 비슷한 거"
+사용자: [옷 사진 첨부 + "이거랑 비슷한 거"]
   ↓
-[1] Agent: analyzeImage({ imageBase64, userHint: "이거랑 비슷한 거" })
-    → { category: "발마칸 코트", styleKeywords: ["오버핏", "캐멀"], ... }
+이미지가 file part로 Gemini에 직접 전달 (별도 Tool X)
+  ↓
+[1] Gemini 멀티모달 내부 처리:
+    이미지 시각 분석 → 카테고리("발마칸 코트") + 스타일 키워드("오버핏", "캐멀") 추출
   ↓
 [2] Agent: searchCatalog({ category: "발마칸 코트", keywords: ["오버핏", "캐멀"] })
     → 매칭 상품
   ↓
-[3] Agent: (선택) comparePrices(...)
-  ↓
-[4] Agent 응답 (Streaming):
+[3] Agent 응답 (Streaming):
     "올려주신 사진은 캐멀톤 오버핏 발마칸이네요. 비슷한 디자인 4개 찾았어요."
     + 상품 카드 그리드
 ```
@@ -280,45 +270,27 @@ const { result } = await ogs({ url: 'https://www.musinsa.com/products/...' })
 
 | Tool | 데이터 소스 |
 | --- | --- |
-| `searchCatalog` | `src/data/catalog.json` (in-memory) |
-| `analyzeImage` | Gemini 멀티모달 (외부 LLM 호출) |
+| `searchCatalog` | `src/data/catalog.json` (in-memory, 현재 5개 실제 무신사 상품) |
 | `comparePrices` | 네이버 쇼핑 검색 API |
 | `parseProductUrl` | `open-graph-scraper` |
+| (이미지 입력) | Gemini 2.5 Flash Lite 멀티모달 native (별도 Tool 없음) |
 
 ---
 
-## 시스템 프롬프트 (초안)
+## 시스템 프롬프트 (현재 구현)
 
-> 작업 중 튜닝하며 채워나갈 자리.
+실제 코드: [`src/app/api/chat/route.ts`](../src/app/api/chat/route.ts)
 
-```
-당신은 "Sosie"라는 패션 쇼핑 AI 도우미입니다.
-사용자는 무신사 헤비유저로, 트렌드 따라 비슷한 옷이 여러 브랜드에서 나오는 것을
-깔끔하게 정리해서 비교/구매하고 싶어합니다.
+원칙 6개로 구조화 (Gemini Lite의 보수적 Tool calling 성향 보완을 위해 강한 지시문 + few-shot 예시):
 
-## 핵심 행동 원칙
+1. **옷 키워드 한 단어라도 나오면 즉시 `searchCatalog`** — 추가 질문 X
+2. **가격 비교/판매처 비교 요청은 `comparePrices`** — searchCatalog 이후 자연 연결
+3. **URL 포함 시 `parseProductUrl` → searchCatalog 연쇄** — 비슷한 상품 찾기
+4. **이미지 첨부 시 Gemini가 직접 이미지 분석 → searchCatalog 호출** — 별도 Tool X
+5. **Tool 응답만으로 답변** — 가짜 상품/가격/판매처 만들지 X, 빈 결과면 솔직히
+6. **답변 톤** — 한국어, 친근/간결, 추천 이유 구체적
 
-1. **단순 검색 X, 다단계 사고 O**
-   - 사용자 시드(텍스트/이미지/URL) → 핵심 의도 파악
-   - 적절한 Tool을 순서대로 호출
-   - 결과를 종합해 "이거 사세요" 명확히 추천
-
-2. **Tool 사용 가이드**
-   - 텍스트 시드: searchCatalog 우선 → 필요시 comparePrices 보완
-   - 이미지 시드: analyzeImage 먼저 → 추출된 키워드로 searchCatalog
-   - URL 시드: parseProductUrl 먼저 → 추출된 정보로 searchCatalog
-   - 가격 비교 요청 명시되면: 반드시 comparePrices 호출
-
-3. **응답 톤**
-   - 친근, 간결, 패션 매거진 느낌
-   - 줄글로 길게 X — 핵심 추천 1~3줄 + 카드로 시각화
-   - 추천 이유는 구체적으로 (가성비/디자인/스타일)
-
-4. **금지 사항**
-   - 카탈로그에 없는 상품 임의 생성 ❌ (Tool로만 답변)
-   - 가격/링크 임의 생성 ❌ (Tool 응답만 사용)
-   - 영문 답변 ❌ (한국어 고정)
-```
+예시 시나리오 5개를 프롬프트 끝에 포함 (텍스트/가격비교/URL/이미지/일반대화).
 
 ---
 
@@ -345,10 +317,12 @@ Vercel AI SDK는 Tool 호출을 streaming 이벤트로 노출 (`onToolCall`, `on
 | Tool 호출 | 사용자 화면 표시 |
 | --- | --- |
 | `searchCatalog` 시작 | `🔧 카탈로그에서 검색 중...` |
-| `searchCatalog` 완료 | `✓ 4개 상품 찾음` |
-| `comparePrices` 시작 | `🔧 판매처별 가격 비교 중...` |
-| `analyzeImage` 시작 | `🔧 이미지 분석 중...` |
-| `parseProductUrl` 시작 | `🔧 URL 정보 추출 중...` |
+| `searchCatalog` 완료 | `✓ 카탈로그 검색 완료` |
+| `comparePrices` 시작/완료 | `🔧 판매처 가격 비교 중...` / `✓ 판매처 가격 비교 완료` |
+| `parseProductUrl` 시작/완료 | `🔧 URL 정보 추출 중...` / `✓ URL 정보 추출 완료` |
+
+구현: [`src/components/ToolStatus.tsx`](../src/components/ToolStatus.tsx) (`LoaderIcon` 회전 / `CheckIcon` / `TriangleAlertIcon`)
++ AI 답변 시작 전 [`TypingIndicator`](../src/components/TypingIndicator.tsx) ("생각 중...")
 
 → 평가 핵심 2번(에이전트 흐름) 직접 어필.
 
@@ -365,10 +339,9 @@ Vercel AI SDK는 Tool 호출을 streaming 이벤트로 노출 (`onToolCall`, `on
 
 ---
 
-## TODO (작업 중 채울 것)
+## 남은 작업
 
-- [ ] 시스템 프롬프트 실전 튜닝 (모델 응답 보며 수정)
-- [ ] Tool별 입출력 실제 예시 JSON 기록
-- [ ] 실패 케이스별 fallback 메시지 다듬기
-- [ ] 사고 과정 UI 디자인 명세 (아이콘/색/애니메이션)
-- [ ] 카탈로그 실제 큐레이션 (30~40개 작성)
+- [ ] 카탈로그 확장 (현재 5개 → 10~15개)
+- [ ] Gemini Lite의 내부 tool_code 누출 케이스 — 마무리 단계에서 full `gemini-2.5-flash`로 교체 시도 (free tier 20/day 한도 주의)
+- [ ] Tool 호출 표시의 빠른 ✓ 완료가 인지 어렵다면 최소 노출 시간 추가 검토
+- [ ] (옵션) `comparePrices` / `parseProductUrl` 결과 시각화 (현재 텍스트만)

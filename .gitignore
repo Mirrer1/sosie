@@ -48,3 +48,6 @@ Thumbs.db
 
 # 개인 메모
 _private/
+
+# Claude Code 로컬 설정
+.claude/settings.local.json

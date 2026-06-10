@@ -33,31 +33,37 @@
 
 ---
 
-## ADR-002: LLM은 Gemini 2.0 Flash
+## ADR-002: LLM은 Gemini 2.5 Flash Lite (현재)
 
-**상태**: Accepted
+**상태**: Accepted (모델 변경 이력 있음)
 
-**배경**: 어떤 LLM을 메인으로 쓸지.
+**배경**: 어떤 Gemini 모델을 쓸지. 초기 계획은 `gemini-2.0-flash`였으나 실제 사용 중 quota/안정성 문제로 두 번 갈아끼움.
 
-**결정**: **Gemini 2.0 Flash** (Google AI Studio 무료 티어).
+**결정 (현재)**: **`gemini-2.5-flash-lite`** (Google AI Studio free tier 1,500/day)
+
+**모델 선택 이력**:
+1. **`gemini-2.0-flash`** — 첫 시도 → 429 Quota Exceeded (`limit: 0`). 이 계정의 free tier 할당이 0이라 사용 불가
+2. **`gemini-2.5-flash`** (full) — 두 번째 시도 → 동작은 하지만 free tier **하루 20회** 한도. 개발/평가 도중 빠르게 소진
+3. **`gemini-2.5-flash-lite`** — 세 번째 시도 → free tier 1,500/day, 멀티모달 + Tool Calling 모두 동작. 현재 사용 중
 
 **이유**:
-- **무료** — 일 1,500회 호출. MVP 개발/시연에 충분.
-- **멀티모달 네이티브** — 이미지 입력이 핵심 기능인데 Gemini가 강점.
-- 우대사항 1번에 Gemini 명시.
+- **무료 + 충분한 한도** — 평가자가 수십 번 메시지 보내도 한도 여유
+- **멀티모달 native** — 이미지 입력이 핵심 기능
+- **Tool Calling 안정** (강화된 시스템 프롬프트 + few-shot 예시 조합으로 lite도 Tool 호출 잘 결정함)
 
 **트레이드오프**:
-- ✅ 비용 0원
+- ✅ 비용 0원, 안정적 한도
 - ✅ 멀티모달 강점
-- ❌ Claude Sonnet 4.6 / GPT-4o 대비 한국어 추론 품질 약간 떨어짐 (체감)
-- ❌ 무료 티어 데이터가 학습에 사용될 수 있음 (과제는 더미라 무관)
+- ❌ Full `gemini-2.5-flash` 대비 reasoning 품질 약간 약함 — 가끔 내부 `<tool_code>` 호출 코드를 텍스트로 누출
+- ❌ 한국어 추론 품질 Claude Sonnet 대비 미세하게 떨어짐 (체감)
 
 **대안 및 기각 이유**:
-- **Claude Sonnet 4.6** — 한국어 + 추론 품질 가장 좋음. 비용 발생 ($5 크레딧 후 유료). 멀티모달 약간 약함.
-- **GPT-4o** — 무난. 비용 발생. 차별성 없음.
+- **Claude Sonnet 4.6** — 품질 가장 좋지만 비용 발생. 우대사항에 Claude도 포함이라 시연 직전 잠깐 갈아끼움 검토 가능
+- **GPT-4o** — 무난. 비용. 차별성 X
 
 **향후 재검토**:
-- Vercel AI SDK가 provider 추상화하니 시연 직전 Claude/GPT 비교 후 최선의 모델로 갈아끼울 수 있음.
+- Vercel AI SDK가 provider 추상화하니 시연 직전 `gemini-2.5-flash` (full) 또는 Claude/GPT-4o로 잠깐 갈아끼우는 옵션 있음
+- 단 full 2.5-flash는 20/day 한도라 마무리 시점에만 시도
 
 ---
 
@@ -165,3 +171,55 @@
 
 **향후 재검토**:
 - 실서비스 단계 + 도메인이 5~10개로 좁혀지면 `next/image` 마이그레이션 (정해진 파트너 도메인만 사용 시점)
+
+---
+
+## ADR-007: 대화 히스토리는 localStorage + 커스텀 이벤트로 초기화
+
+**상태**: Accepted
+
+**배경**: 평가자가 새로고침해도 대화 유지되는 게 ChatGPT스러운 기본 UX. 별도 백엔드 없이 처리 필요.
+
+**결정**:
+- `localStorage` key `sosie:messages`에 `useChat`의 `messages` JSON 직렬화 저장
+- 마운트 시 복원 + 변경마다 자동 저장
+- 초기화는 헤더의 `ClearChatButton` (지우개 아이콘) → 확인 모달 → `window.dispatchEvent(new CustomEvent('sosie:clear-chat'))` → ChatRoot가 수신해 `setMessages([])`
+- 하이드레이션 플래시 방지: `isHydrated` 플래그로 localStorage 로드 끝나기 전까지 Skeleton 표시
+
+**이유**:
+- 추가 라이브러리/백엔드 없이 가벼움
+- ChatRoot ↔ Header는 페이지 트리 분리되어 있어 prop drilling보다 window 이벤트가 깔끔
+- shadcn `Dialog` 이미 설치되어 있어 확인 모달 무료
+
+**트레이드오프**:
+- ✅ 백엔드 없이 영속성 확보
+- ✅ Header가 ChatRoot에 직접 의존 안 함 (느슨한 결합)
+- ❌ base64 이미지 포함 메시지는 localStorage 5~10MB 한도 빠르게 채움 (저장 실패 시 silent fail)
+- ❌ 다중 탭 동기화 없음 (탭마다 독립 — `storage` 이벤트는 처리 안 함)
+- ❌ 다중 세션(사이드바) 미지원 — V2 백로그
+
+**향후 재검토**:
+- 실서비스: Supabase 영구 저장 + 다중 세션 + 멀티 탭 sync
+
+---
+
+## ADR-008: ESLint `react-hooks/set-state-in-effect` 룰 끔
+
+**상태**: Accepted
+
+**배경**: React 19 새 lint 룰이 `useEffect` 안에서의 `setState` 호출을 차단. 그러나 외부 상태(localStorage, 마운트 검출) 동기화에는 정당한 패턴.
+
+**결정**: `eslint.config.mjs`에 `'react-hooks/set-state-in-effect': 'off'` 추가. 인라인 disable 주석 X.
+
+**이유**:
+- 우리 코드에서 사용하는 패턴 (`localStorage` 로드 후 `setIsHydrated(true)`, `setMessages(stored)`) 모두 룰 docs가 명시한 "external system sync" 케이스
+- 인라인 disable 주석 흩어지면 가독성 ↓ + 누락 위험
+- 작은 코드베이스라 룰 끄는 비용보다 정당성이 큼
+
+**트레이드오프**:
+- ✅ 코드 깔끔 (주석 노이즈 없음)
+- ✅ localStorage/외부 시스템 sync 패턴 자유롭게 사용
+- ❌ 의도치 않은 cascading 렌더 케이스를 lint가 못 잡음 (코드 리뷰로 보완)
+
+**향후 재검토**:
+- 코드베이스 커지면 룰 다시 켜고 인라인 disable로 좁게 허용 검토

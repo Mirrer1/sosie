@@ -109,14 +109,15 @@ npm run build && npm start
 
 > 자세한 설계: [`docs/AGENT.md`](docs/AGENT.md)
 
-### Tool 4개
+### Tool 3개 + 멀티모달 native
 
 | Tool | 입력 | 출력 |
 | --- | --- | --- |
-| `searchCatalog` | 키워드/카테고리/태그 | 매칭 상품 배열 |
-| `analyzeImage` | base64 이미지 | 스타일 키워드 |
-| `comparePrices` | 상품명 | 판매처별 가격 |
-| `parseProductUrl` | URL | OG 메타 |
+| `searchCatalog` | 키워드/카테고리/태그 | 매칭 상품 배열 (현재 5개 카탈로그) |
+| `comparePrices` | 상품명 | 판매처별 가격 (네이버 쇼핑 API) |
+| `parseProductUrl` | URL | OG 메타 (제목/이미지/설명) |
+
+이미지 입력은 Gemini 멀티모달 native로 처리 — 별도 Tool 없이 사용자 메시지의 file part로 전달.
 
 ### 흐름 예시 (텍스트 시드)
 
@@ -137,38 +138,45 @@ Agent: 카드 그리드 + 추천 이유 응답 (Streaming)
 ## 6. 데이터 흐름
 
 ```
-사용자 입력 (텍스트/이미지/URL)
+사용자 입력 (텍스트 / 이미지 첨부 / 텍스트에 URL 포함)
   ↓
 Next.js Route Handler (/api/chat)
   ↓
-Vercel AI SDK + Gemini 2.0 Flash
-  ↓ (Tool Calling)
-[ searchCatalog ] → src/data/catalog.json (직접 큐레이션)
-[ comparePrices ] → 네이버 쇼핑 API
+Vercel AI SDK + Gemini 2.5 Flash Lite (멀티모달 native)
+  ↓ (Tool Calling, stopWhen: stepCountIs(5))
+[ searchCatalog ]   → src/data/catalog.json (현재 5개 실제 무신사 상품)
+[ comparePrices ]   → 네이버 쇼핑 검색 API
 [ parseProductUrl ] → open-graph-scraper
-[ analyzeImage ]  → Gemini 멀티모달
-  ↓ (Streaming 응답 + 상품 카드 데이터)
-useChat 훅 → ChatMessage 컴포넌트 + ProductCard 그리드
+(이미지)            → Gemini 멀티모달 native, 별도 Tool 없음
+  ↓ (Streaming 응답 + Tool 상태 + 상품 카드 데이터)
+useChat 훅 → ChatMessage 마크다운 + ToolStatus + ProductGrid + ImageLightbox
+  ↓
+대화는 localStorage에 자동 영속화 (헤더의 지우개 버튼으로 초기화)
 ```
 
 ---
 
 ## 7. 본인이 중점적으로 구현한 부분
 
-- **AI Agent 다단계 Tool Calling 흐름 설계** — 사용자 시드 종류(텍스트/이미지/URL)에 따라 Agent가 Tool을 어떤 순서로 호출할지 시스템 프롬프트로 가이드
-- **Agent 사고 과정 가시화** — Vercel AI SDK의 Tool 호출 streaming 이벤트를 UI로 노출 (`🔧 카탈로그 검색 중...`)
+- **AI Agent 다단계 Tool Calling 흐름 설계** — 사용자 시드 종류(텍스트/이미지/URL)에 따라 Agent가 Tool을 어떤 순서로 호출할지 시스템 프롬프트 + few-shot 예시로 가이드 (Gemini Lite의 보수적 Tool 호출 성향 보완)
+- **Agent 사고 과정 가시화** — `useChat`의 tool part state(`input-streaming`/`output-available`/`output-error`)를 `ToolStatus` 컴포넌트로 실시간 노출 (회전 `LoaderIcon` → `CheckIcon`)
 - **Zod 스키마 강제** — Tool 입출력에 Zod 스키마 박아 LLM 환각/스키마 오류 차단
-- **무신사 트렌드 카탈로그 큐레이션** — 본인 페르소나 인사이트 그대로 데이터 설계에 반영
+- **멀티모달 이미지 입력** — 파일 picker / 드래그앤드롭 / 클립보드 paste 3가지 입력 + 5MB·jpeg/png/webp 검증 + 미리보기 + 확대 라이트박스
+- **상품 카드 그리드** — Tool 결과를 `ProductGrid`로 시각화, 카드 클릭 시 실제 무신사 상품 페이지 이동
+- **대화 영속화** — localStorage 자동 저장/복원 + 헤더의 지우개 버튼으로 초기화 (확인 모달)
+- **무신사 트렌드 카탈로그 큐레이션** — 본인 페르소나 인사이트 그대로 데이터 설계에 반영, 실제 무신사 CDN 이미지/상품 URL 사용
 
 ---
 
 ## 8. 구현하지 못한 부분
 
-- **URL 입력 모드** — Phase 5에 OG 파싱은 들어갔지만 UI/UX 완성도는 부족 (시간 보고 결정)
+- **카탈로그 확장** — 현재 5개 실제 무신사 상품 큐레이션. 시연용으로 충분하지만 상품 폭이 좁음. V2에서 10~30개 추가 큐레이션 또는 무신사 파트너 API.
 - **Supabase Auth + 영구 저장 DB** — 익명 사용으로 진입 마찰 제거를 우선시. V2로 분리.
-- **자체 카탈로그 크롤링 파이프라인** — 무신사 파트너 API 미보유로 직접 크롤링은 약관 리스크. 30개 큐레이션으로 MVP. V2로.
-- **다중 대화 세션** — ChatGPT 같은 사이드바 세션 목록. localStorage 단일 세션만 MVP.
+- **자체 카탈로그 크롤링 파이프라인** — 무신사 파트너 API 미보유로 직접 크롤링은 약관 리스크. 큐레이션 데이터로 MVP, V2로.
+- **다중 대화 세션** — ChatGPT 같은 사이드바 세션 목록. 현재는 단일 세션 + 지우개 버튼 초기화. V2로.
 - **공유 링크** — 대화 결과를 URL로 공유. V2.
+- **comparePrices / parseProductUrl 결과 시각화** — 현재 텍스트 답변으로만 표시 (`searchCatalog`만 카드 그리드). 동일 패턴으로 확장 가능, 시간 보고 결정.
+- **Full Gemini 2.5 Flash로 시연** — Lite가 가끔 `<tool_code>` 내부 호출 코드를 텍스트로 누출. Full은 free tier 20/day 한도라 마무리 시점에 잠깐 갈아끼울 예정.
 
 ---
 
