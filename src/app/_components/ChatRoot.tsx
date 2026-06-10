@@ -63,21 +63,27 @@ const ChatRoot = () => {
   const handleSubmit = async () => {
     if ((!input.trim() && !imageFile) || isLoading) return
 
+    // 프로필 매 요청 body에 첨부
+    const options = profile ? { body: { profile } } : undefined
+
     if (imageFile) {
       const dataUrl = await fileToDataUrl(imageFile)
-      sendMessage({
-        text: input,
-        files: [
-          {
-            type: 'file',
-            mediaType: imageFile.type,
-            filename: imageFile.name,
-            url: dataUrl,
-          },
-        ],
-      })
+      sendMessage(
+        {
+          text: input,
+          files: [
+            {
+              type: 'file',
+              mediaType: imageFile.type,
+              filename: imageFile.name,
+              url: dataUrl,
+            },
+          ],
+        },
+        options,
+      )
     } else {
-      sendMessage({ text: input })
+      sendMessage({ text: input }, options)
     }
 
     setInput('')
