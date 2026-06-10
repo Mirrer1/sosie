@@ -93,14 +93,14 @@ npm run build && npm start
 ```
 
 **필요 키:**
-- `GOOGLE_GENERATIVE_AI_API_KEY` — https://aistudio.google.com (무료)
-- `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` — https://developers.naver.com (무료)
+- `GOOGLE_GENERATIVE_AI_API_KEY` — https://aistudio.google.com
+- `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` — https://developers.naver.com
 
 ---
 
 ## 5. 배포 URL
 
-TODO — Vercel 배포 후 갱신
+https://sosie-theta.vercel.app/
 
 ---
 
