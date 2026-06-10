@@ -91,6 +91,13 @@ const ChatRoot = () => {
     setImageFile(null)
   }
 
+  // 웰컴 화면 예시 칩 클릭 시 즉시 전송
+  const handleExampleClick = (text: string) => {
+    if (isLoading) return
+    const options = profile ? { body: { profile } } : undefined
+    sendMessage({ text }, options)
+  }
+
   // 드래그 진입, Files 타입 확인하고 counter 증가
   const handleDragEnter = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
@@ -255,7 +262,7 @@ const ChatRoot = () => {
           </div>
         ) : messages.length === 0 ? (
           <div className="animate-in fade-in flex flex-1 flex-col duration-300">
-            <ChatWelcome />
+            <ChatWelcome onExampleClick={handleExampleClick} />
           </div>
         ) : (
           <div className="animate-in fade-in mx-auto w-full max-w-3xl space-y-3 px-4 pt-6 pb-10 duration-300">

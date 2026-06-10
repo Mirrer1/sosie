@@ -1,7 +1,11 @@
+type ChatWelcomeProps = {
+  onExampleClick: (text: string) => void
+}
+
 const SEED_EXAMPLES = ['청바지 추천해줘', '가을에 입을 셔츠 골라줘', '예산 안에서 코트 보여줘']
 
-// 메시지 없을 때 환영 화면
-const ChatWelcome = () => {
+// 메시지 없을 때 환영 화면, 예시 칩 클릭 시 즉시 전송
+const ChatWelcome = ({ onExampleClick }: ChatWelcomeProps) => {
   return (
     <div className="mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center">
       <div className="space-y-3">
@@ -19,6 +23,7 @@ const ChatWelcome = () => {
           <button
             key={ex}
             type="button"
+            onClick={() => onExampleClick(ex)}
             className="bg-card hover:bg-accent rounded-full border px-3 py-1.5 text-sm transition-colors"
           >
             {ex}
