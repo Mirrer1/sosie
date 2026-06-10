@@ -14,7 +14,7 @@ import ToolStatus from '@/components/ToolStatus'
 import TypingIndicator from '@/components/TypingIndicator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import { type SearchCatalogOutput } from '@/types/tool'
+import { type SearchProductsOutput } from '@/types/tool'
 import { validateImage } from '@/utils/image'
 
 const STORAGE_KEY = 'sosie:messages'
@@ -222,12 +222,12 @@ const ChatRoot = () => {
                   }
 
                   if (
-                    part.type === 'tool-searchCatalog' &&
+                    part.type === 'tool-searchProducts' &&
                     'state' in part &&
                     part.state === 'output-available' &&
                     part.output
                   ) {
-                    const output = part.output as SearchCatalogOutput
+                    const output = part.output as SearchProductsOutput
                     return (
                       <div key={idx} className="space-y-3">
                         <ToolStatus toolType={part.type} state={part.state} />

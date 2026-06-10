@@ -1,7 +1,7 @@
-import { type CatalogProduct } from '@/types/product'
+import { type MarketProduct } from '@/types/product'
 
 type ProductCardProps = {
-  product: CatalogProduct
+  product: MarketProduct
 }
 
 // 단일 상품 카드
@@ -23,7 +23,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
       <div className="flex flex-1 flex-col gap-1 p-3">
         <p className="text-muted-foreground text-xs">{product.brand}</p>
         <p className="line-clamp-2 text-sm leading-snug">{product.name}</p>
-        <p className="mt-auto text-sm font-semibold">{product.price.toLocaleString()}원</p>
+        <div className="mt-auto flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">{product.price.toLocaleString()}원</p>
+          <p className="text-muted-foreground text-xs">{product.mall}</p>
+        </div>
       </div>
     </a>
   )

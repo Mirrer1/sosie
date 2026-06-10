@@ -1,8 +1,8 @@
 import ProductCard from '@/components/ProductCard'
-import { type CatalogProduct } from '@/types/product'
+import { type MarketProduct } from '@/types/product'
 
 type ProductGridProps = {
-  products: CatalogProduct[]
+  products: MarketProduct[]
 }
 
 // 상품 카드 반응형 그리드

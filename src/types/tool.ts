@@ -1,22 +1,31 @@
 import { z } from 'zod'
 
-import { catalogProductSchema } from './product'
+import { marketProductSchema } from './product'
 
-// searchCatalog Tool 입력
-export const searchCatalogInputSchema = z.object({
-  category: z.string().optional().describe('카테고리 (예: 발마칸 코트, 와이드 진)'),
-  keywords: z.array(z.string()).optional().describe('스타일 키워드 (예: 오버핏, 캐멀, 캐주얼)'),
+// searchProducts Tool 입력
+export const searchProductsInputSchema = z.object({
+  keywords: z
+    .array(z.string())
+    .min(1)
+    .describe('검색 키워드 (예: ["청바지", "와이드"]). 카테고리나 스타일 단어 1개 이상 필수.'),
+  brand: z.string().optional().describe('브랜드 (예: "무신사 스탠다드"). 사용자가 선호하면 지정.'),
   priceMin: z.number().int().nonnegative().optional(),
   priceMax: z.number().int().nonnegative().optional(),
+  includeOtherMalls: z
+    .boolean()
+    .optional()
+    .describe(
+      '기본 false (무신사 입점 상품만). true면 다른 몰(29CM, 공식몰 등)도 포함. 사용자가 명시적으로 더 보고 싶다고 했을 때만 true.',
+    ),
 })
 
-// searchCatalog Tool 출력
-export const searchCatalogOutputSchema = z.object({
-  products: z.array(catalogProductSchema),
+// searchProducts Tool 출력
+export const searchProductsOutputSchema = z.object({
+  products: z.array(marketProductSchema),
 })
 
-export type SearchCatalogInput = z.infer<typeof searchCatalogInputSchema>
-export type SearchCatalogOutput = z.infer<typeof searchCatalogOutputSchema>
+export type SearchProductsInput = z.infer<typeof searchProductsInputSchema>
+export type SearchProductsOutput = z.infer<typeof searchProductsOutputSchema>
 
 // comparePrices Tool 입력
 export const comparePricesInputSchema = z.object({
