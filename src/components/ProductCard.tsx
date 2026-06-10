@@ -2,16 +2,16 @@ import { type MarketProduct } from '@/types/product'
 
 type ProductCardProps = {
   product: MarketProduct
+  onClick: (product: MarketProduct) => void
 }
 
 // 단일 상품 카드
-const ProductCard = ({ product }: ProductCardProps) => {
+const ProductCard = ({ product, onClick }: ProductCardProps) => {
   return (
-    <a
-      href={product.productUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="bg-card hover:bg-accent group flex flex-col overflow-hidden rounded-lg border transition-colors"
+    <button
+      type="button"
+      onClick={() => onClick(product)}
+      className="bg-card hover:bg-accent group flex flex-col overflow-hidden rounded-lg border text-left transition-colors"
     >
       <div className="bg-muted aspect-square overflow-hidden">
         <img
@@ -28,7 +28,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <p className="text-muted-foreground text-xs">{product.mall}</p>
         </div>
       </div>
-    </a>
+    </button>
   )
 }
 

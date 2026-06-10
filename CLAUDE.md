@@ -24,7 +24,7 @@
 - ✅ Phase 3 채팅 코어 (Gemini Streaming + useChat + 마크다운 + 자동 스크롤)
 - ✅ Phase 4 Tool Calling — Tool 4개 완성 (`searchProducts`, `comparePrices`, `parseProductUrl`, `updateProfile`)
 - ✅ Phase 5 멀티모달 + 상품 카드 (이미지 입력 3종 + 라이트박스 + ProductGrid + ToolStatus)
-- ✅ Phase 6 부가 + 컨셉 피벗 (대화 히스토리 localStorage / 프로필 온보딩 + 수정 버튼 / 자동 학습 루프 / 카탈로그 폐기)
+- ✅ Phase 6 부가 + 컨셉 피벗 (대화 히스토리 localStorage / 프로필 온보딩 + 수정 버튼 / 자동 학습 루프 / 카탈로그 폐기 / 카드 클릭 → 판매처 비교 모달)
 - ⏳ Phase 7 배포 + 문서 마무리 (문서 갱신 진행 중, Vercel 배포 + 시연 영상 + 제출 남음)
 
 **현재 모델**: `gemini-flash-lite-latest` (free tier 1500/day, 멀티모달, Tool Calling 모두 동작)
@@ -44,7 +44,9 @@ V1 ("닮은 옷 다 모아드려요" + 큐레이션 카탈로그 5개) → V2 ("
 6. ✅ 문서 갱신 (README + docs/AGENT + docs/DECISIONS + 이 파일)
 7. ⏳ Vercel 배포 + 시연 영상 + 제출
 
-상세는 [`docs/DECISIONS.md`](docs/DECISIONS.md) ADR-009/010 참조.
++ 카드 클릭 → 판매처 비교 모달 (ADR-011): `comparePrices` 핵심 로직을 `runComparePrices`로 추출해 Tool + `/api/compare-prices` 라우트가 공유. `ComparePricesDialog`는 가격 오름차순/최저가 뱃지/네이버 차단 URL 검색 페이지 우회 포함.
+
+상세는 [`docs/DECISIONS.md`](docs/DECISIONS.md) ADR-009/010/011 참조.
 
 ---
 

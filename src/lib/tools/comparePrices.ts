@@ -25,13 +25,32 @@ type NaverShopResponse = {
 // HTML 태그 제거
 const stripHtml = (str: string) => str.replace(/<[^>]*>/g, '')
 
-// 네이버 응답을 Sosie 스키마로 매핑
-export const mapNaverResponse = (data: NaverShopResponse): ComparePricesOutput => {
+// 네이버 쇼핑 검색 결과 URL은 외부 진입 시 차단됨, 검색 페이지로 우회
+const NAVER_BLOCKED_HOSTS = ['shopping.naver.com', 'search.shopping.naver.com']
+
+const buildSafeUrl = (link: string, productName: string, mallName: string): string => {
+  try {
+    const host = new URL(link).hostname
+    if (NAVER_BLOCKED_HOSTS.some((h) => host.endsWith(h))) {
+      const query = [productName, mallName].filter(Boolean).join(' ')
+      return `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(query)}`
+    }
+    return link
+  } catch {
+    return link
+  }
+}
+
+// 네이버 응답을 Sosie 스키마로 매핑, 네이버 차단 URL은 검색 페이지로 우회
+export const mapNaverResponse = (
+  data: NaverShopResponse,
+  productName: string,
+): ComparePricesOutput => {
   return {
     sources: data.items.map((item) => ({
       seller: item.mallName || '알 수 없음',
       price: parseInt(item.lprice, 10),
-      url: item.link,
+      url: buildSafeUrl(item.link, productName, item.mallName ?? ''),
       imageUrl: item.image || undefined,
       title: stripHtml(item.title),
     })),
@@ -66,12 +85,15 @@ const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
   return res.json()
 }
 
+// 상품명으로 판매처별 가격 비교, Tool과 카드 모달 양쪽에서 재사용
+export const runComparePrices = async (productName: string): Promise<ComparePricesOutput> => {
+  const data = await fetchNaverShop(productName)
+  return mapNaverResponse(data, productName)
+}
+
 export const comparePrices = tool({
   description:
     '같은 상품을 여러 판매처에서 가격 비교합니다. 사용자가 가격, 어디서 사는 게 싼지, 판매처 비교를 물을 때 호출하세요.',
   inputSchema: comparePricesInputSchema,
-  execute: async ({ productName }) => {
-    const data = await fetchNaverShop(productName)
-    return mapNaverResponse(data)
-  },
+  execute: async ({ productName }) => runComparePrices(productName),
 })

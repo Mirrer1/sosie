@@ -52,6 +52,7 @@ AI 에이전트가 **사용자 프로필**(스타일/브랜드/사이즈/예산)
 - 🤖 **AI Agent 다단계 Tool 호출 (4종)** — 상품 검색 / 가격 비교 / URL 파싱 / 프로필 업데이트
 - 👁️ **Agent 사고 과정 가시화** — Tool 호출 단계를 실시간으로 사용자에게 노출
 - 🛍️ **무신사 풀 검색** — 네이버 쇼핑 API + 무신사 입점 필터로 카탈로그 한계 없음
+- 🏷️ **카드 클릭 → 판매처별 가격 비교 모달** — 추천 카드에서 1-click으로 여러 판매처 가격 정렬·최저가 뱃지, 각 판매처로 바로 구매
 - 👤 **사용자 프로필** — 첫 진입 시 4단계 마법사 (스타일·브랜드·사이즈·예산), 헤더 버튼으로 언제든 수정
 - 🧠 **대화 중 프로필 자동 학습** — "사실 빈티지도 좋아해" → `updateProfile` Tool이 프로필에 누적 → 다음 추천에 반영
 - 💾 **대화 히스토리 자동 저장** — localStorage (새로고침 안전)
@@ -114,7 +115,7 @@ npm run build && npm start
 | Tool | 입력 | 출력 |
 | --- | --- | --- |
 | `searchProducts` | 키워드/브랜드/가격대/`includeOtherMalls` | 무신사 입점 상품 배열 (네이버 쇼핑 API 필터) |
-| `comparePrices` | 상품명 | 판매처별 가격 비교 |
+| `comparePrices` | 상품명 | 판매처별 가격 비교 (동일 로직을 `/api/compare-prices` 라우트로도 노출 — 카드 클릭 모달이 호출) |
 | `parseProductUrl` | URL | OG 메타 (제목/이미지/설명) |
 | `updateProfile` | 변경된 프로필 필드(스타일/브랜드/사이즈/예산) + `mode`(merge/replace) + `reason` | 클라이언트가 결과 받아 localStorage에 반영 |
 
@@ -159,7 +160,7 @@ Next.js Route Handler (/api/chat)
 Vercel AI SDK + Gemini Flash Lite (멀티모달 native)
   ↓ (Tool Calling, stopWhen: stepCountIs(5))
 [ searchProducts  ] → 네이버 쇼핑 검색 API (무신사 입점 필터)
-[ comparePrices   ] → 네이버 쇼핑 검색 API
+[ comparePrices   ] → 네이버 쇼핑 검색 API (동일 로직 /api/compare-prices 로도 노출, 카드 클릭 모달 전용)
 [ parseProductUrl ] → open-graph-scraper
 [ updateProfile   ] → 입력 echo (실제 적용은 클라이언트가 결과 받아 localStorage 머지/교체)
 (이미지)             → Gemini 멀티모달 native, 별도 Tool 없음
@@ -179,7 +180,7 @@ useChat 훅 → ChatMessage 마크다운 + ToolStatus + ProductGrid + ImageLight
 - **Agent 사고 과정 가시화** — `useChat`의 tool part state(`input-streaming`/`output-available`/`output-error`)를 `ToolStatus` 컴포넌트로 실시간 노출 (회전 `LoaderIcon` → `CheckIcon`)
 - **Zod 스키마 강제** — Tool 입출력 + 프로필 schema에 Zod 박아 LLM 환각/스키마 오류 차단
 - **멀티모달 이미지 입력** — 파일 picker / 드래그앤드롭 / 클립보드 paste 3가지 입력 + 5MB·jpeg/png/webp 검증 + 미리보기 + 확대 라이트박스
-- **상품 카드 그리드** — Tool 결과를 `ProductGrid`로 시각화, 카드 클릭 시 실제 상품 페이지 이동
+- **상품 카드 그리드 + 판매처 비교 모달** — Tool 결과를 `ProductGrid`로 시각화, 카드 클릭 시 `comparePrices` 로직을 그대로 재사용해 판매처별 가격 인플레이스 표시(가격 오름차순/최저가 뱃지/각 판매처 직접 구매 링크). 네이버 차단 URL은 검색 페이지로 우회
 - **대화·프로필 영속화** — localStorage 자동 저장/복원 (`sosie:messages`, `sosie:profile`) + 헤더 지우개 버튼(대화) / 사람 아이콘(프로필) 으로 컨트롤
 - **온보딩 마법사 4단계** — 첫 진입 시 칩 토글 기반 (스킵 가능, 다 선택사항). 헤더 버튼으로 언제든 재오픈, 열 때마다 현재 저장값으로 prefill
 
