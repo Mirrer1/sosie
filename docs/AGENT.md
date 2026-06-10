@@ -6,7 +6,7 @@
 
 ## 모델 / SDK
 
-- **모델**: **Gemini 2.5 Flash Lite** (Google AI Studio, free tier 1500/day)
+- **모델**: **Gemini Flash Lite** (`gemini-flash-lite-latest`, Google AI Studio free tier 1500/day)
 - **SDK**: Vercel AI SDK v6 (`ai`, `@ai-sdk/google`, `@ai-sdk/react`)
 - 멀티모달 native 지원 (이미지 입력은 별도 Tool 없이 사용자 메시지 file part로 처리)
 - Tool Calling 다단계 (`stopWhen: stepCountIs(5)`)
@@ -14,34 +14,48 @@
 
 ---
 
+## 컨셉
+
+> **"옷 사고 싶은데 뭐 살지 모를 때, 같이 골라주는 AI 패션 스타일리스트"**
+
+- 사용자 프로필(스타일/브랜드/사이즈/예산)을 미리 받아둠
+- 매 요청에 프로필을 시스템 프롬프트에 동적 주입 → AI가 추천에 반영
+- 대화 중 사용자가 흘리는 취향("사실 빈티지도 좋아해")을 감지해 프로필에 누적
+- 검색 풀은 무신사 입점 상품 (네이버 쇼핑 API + 무신사 필터)
+
+---
+
 ## 데이터 소스 3종 (요약)
 
 | 소스 | 역할 | 위치 |
 | --- | --- | --- |
-| **큐레이션 카탈로그** | 트렌드 상품 베이스 (메인) | `src/data/catalog.json` |
-| **네이버 쇼핑 API** | 판매처별 가격 비교 fallback | 외부 API |
+| **네이버 쇼핑 검색 API** | 무신사 입점 상품 검색 + 판매처 가격 비교 | 외부 API |
 | **OG 파싱** | URL 입력 시 메타 추출 | `open-graph-scraper` |
+| **localStorage 프로필** | 사용자 프로필 영속화 | `sosie:profile` (브라우저) |
 
 ---
 
-## Tool 3개 명세 (전부 구현 완료)
+## Tool 4개 명세
 
 모든 Tool 입출력은 **Zod 스키마로 강제**. LLM 환각/형식 오류 차단.
 이미지 분석은 별도 Tool 없이 Gemini 멀티모달 native로 처리 (메시지의 file part).
 
+스키마 정의: [`src/types/tool.ts`](../src/types/tool.ts), [`src/types/profile.ts`](../src/types/profile.ts)
+
 ---
 
-### 1. `searchCatalog`
+### 1. `searchProducts`
 
-**역할**: 큐레이션된 무신사 트렌드 카탈로그에서 비슷한 상품 찾기.
+**역할**: 무신사 입점 상품을 키워드·브랜드·가격대로 검색.
 
 **입력 스키마**:
 ```ts
 {
-  category?: string      // "발마칸 코트", "와이드 진" 등
-  keywords?: string[]    // ["오버핏", "캐멀", "캐주얼"]
-  priceMin?: number
+  keywords: string[]              // ["청바지", "와이드"] — 최소 1개
+  brand?: string                  // "무신사 스탠다드"
+  priceMin?: number               // 원 단위
   priceMax?: number
+  includeOtherMalls?: boolean     // 기본 false (무신사만). true면 다른 몰 포함
 }
 ```
 
@@ -50,94 +64,12 @@
 {
   products: Array<{
     id: string
-    category: string
     brand: string
     name: string
     price: number
     imageUrl: string
     productUrl: string
-    tags: string[]
-    description: string
-  }>
-}
-```
-
-#### 데이터 소스: 큐레이션 카탈로그
-
-**파일**: `src/data/catalog.json`
-
-**JSON 스키마 (1건)**:
-```json
-{
-  "id": "uniformbridge-balmacaan-camel",
-  "category": "발마칸 코트",
-  "brand": "유니폼브릿지",
-  "name": "발마칸 싱글 코트",
-  "price": 168000,
-  "imageUrl": "https://image.msscdn.net/images/goods_img/.../detail.jpg",
-  "productUrl": "https://www.musinsa.com/products/1234567",
-  "tags": ["오버핏", "캐멀", "캐주얼"],
-  "description": "캐멀톤 오버핏 발마칸 코트. 미니멀, 데일리 활용도 높음."
-}
-```
-
-**큐레이션 정책**:
-
-- **카테고리 6개** (작업 시점 본인이 보는 무신사 트렌드 기준)
-  - 발마칸 코트, 워크자켓, 와이드 진, 카고팬츠, 니트 풀오버, 셋업/오버사이즈 셔츠
-- **카테고리당 4~5개 브랜드/상품**
-- **가격대 다양** — 저가(8~12만) / 중가(15~25만) / 고가(30만~)
-- **브랜드 분산** — 유니폼브릿지/코스/와이드앵글/유스/노운 등
-- **이미지/URL은 진짜 무신사 거** — 카드 클릭 시 실제 무신사 상품 페이지로 이동
-
-**큐레이션 기준**:
-- 평소 본인이 "이거 사고 싶다" 생각해본 상품
-- 무신사 페이지 살아있는 (404 X) 상품
-- 이미지 URL이 직접 CDN인 거
-
-**런타임 처리**: 빌드 타임에 import → 메모리 검색. I/O 없음.
-
----
-
-### 2. 이미지 입력 (별도 Tool 없음)
-
-사용자가 옷 이미지를 첨부하면 메시지의 file part로 Gemini에 직접 전달됨.
-Gemini가 이미지를 분석한 뒤 시스템 프롬프트 가이드에 따라 자동으로 `searchCatalog` Tool을 호출.
-
-**UI 흐름**:
-- ChatComposer: 파일 picker / 드래그앤드롭 / 클립보드 paste 3가지 입력 모두 지원
-- 검증: `image/jpeg`, `image/png`, `image/webp` + 5MB 이하 (`src/utils/image.ts`)
-- 미리보기 + 확대 라이트박스
-- ChatRoot에서 base64 data URL로 변환 후 `sendMessage({ text, files: [{ type: 'file', mediaType, filename, url }] })`
-
-**왜 별도 Tool 안 만들었나**:
-- Gemini 2.5 Flash Lite의 멀티모달이 이미지 이해 + Tool 결정을 한 번에 처리
-- 별도 `analyzeImage` Tool을 만들면 LLM이 두 번 호출돼 비용/지연 증가
-- 단일 step에서 이미지 → searchCatalog 키워드 추출까지 진행 (시스템 프롬프트 원칙 4번)
-
----
-
-### 3. `comparePrices`
-
-**역할**: 같은/유사한 상품의 다양한 판매처 가격 비교.
-
-**입력 스키마**:
-```ts
-{
-  productName: string    // "유니폼브릿지 발마칸 싱글 코트"
-  brand?: string
-}
-```
-
-**출력 스키마**:
-```ts
-{
-  sources: Array<{
-    seller: string       // "무신사", "유니폼브릿지 공식몰", "29CM"
-    price: number
-    url: string
-    benefit?: string     // "무료배송", "5% 적립"
-    imageUrl?: string
+    mall: string
   }>
 }
 ```
@@ -147,11 +79,11 @@ Gemini가 이미지를 분석한 뒤 시스템 프롬프트 가이드에 따라 
 **등록**: https://developers.naver.com → 애플리케이션 등록 → "쇼핑 검색" 활성화
 **한도**: 무료 일 25,000회
 
-**엔드포인트**:
+**호출**:
 ```
 GET https://openapi.naver.com/v1/search/shop.json
-  ?query=유니폼브릿지+발마칸
-  &display=10
+  ?query={query}
+  &display=20
   &sort=sim
 
 Headers:
@@ -159,16 +91,58 @@ Headers:
   X-Naver-Client-Secret: ${NAVER_CLIENT_SECRET}
 ```
 
-**응답 매핑**:
+**무신사 입점 필터 전략 (구현)**:
+- `buildQuery` — `includeOtherMalls=false`면 "무신사" 키워드를 query에 강제 첨부 + 브랜드 + 사용자 keywords 조립
+- `isMusinsa` — 응답 아이템의 `link`가 `musinsa.com` 도메인이거나 `mallName`이 "무신사" 포함
+- 필터 후 가격 범위 매칭, 상위 8개 반환
+
+응답의 `mallName`은 흔히 "네이버" 또는 셀러스토어 이름이 와서 신뢰가 떨어짐 → **링크 도메인 기준 필터**가 더 정확. 구현: [`src/lib/tools/searchProducts.ts`](../src/lib/tools/searchProducts.ts)
+
+---
+
+### 2. 이미지 입력 (별도 Tool 없음)
+
+사용자가 옷 이미지를 첨부하면 메시지의 file part로 Gemini에 직접 전달됨.
+Gemini가 이미지를 분석한 뒤 시스템 프롬프트 원칙 5에 따라 자동으로 `searchProducts` Tool을 호출.
+
+**UI 흐름**:
+- ChatComposer: 파일 picker / 드래그앤드롭 / 클립보드 paste 3가지 입력 모두 지원
+- 검증: `image/jpeg`, `image/png`, `image/webp` + 5MB 이하 (`src/utils/image.ts`)
+- 미리보기 + 확대 라이트박스
+- ChatRoot에서 base64 data URL로 변환 후 `sendMessage({ text, files: [{ type: 'file', mediaType, filename, url }] })`
+
+**왜 별도 Tool 안 만들었나**:
+- Flash Lite 멀티모달이 이미지 이해 + Tool 결정을 한 번에 처리
+- 별도 `analyzeImage` Tool을 만들면 LLM이 두 번 호출돼 비용/지연 증가
+- 단일 step에서 이미지 → searchProducts 키워드 추출까지 진행
+
+---
+
+### 3. `comparePrices`
+
+**역할**: 추천한 상품의 판매처별 가격 비교.
+
+**입력 스키마**:
 ```ts
-naverItem.title (HTML tag 제거) → 상품명
-naverItem.lprice → price
-naverItem.link → url
-naverItem.image → imageUrl
-naverItem.mallName → seller
+{
+  productName: string    // "유니폼브릿지 발마칸 싱글 코트"
+}
 ```
 
-**캐싱**: 메모리 캐시 가능 (선택 — Vercel 서버리스라 짧음).
+**출력 스키마**:
+```ts
+{
+  sources: Array<{
+    seller: string
+    price: number
+    url: string
+    imageUrl?: string
+    title?: string
+  }>
+}
+```
+
+**데이터 소스**: 네이버 쇼핑 검색 API (필터 없이, mallName 기준 그루핑)
 
 ---
 
@@ -189,23 +163,12 @@ naverItem.mallName → seller
   title: string
   imageUrl?: string
   description?: string
-  price?: number
-  brand?: string
+  siteName?: string
   sourceUrl: string
 }
 ```
 
-#### 데이터 소스: open-graph-scraper
-
-**라이브러리**: `open-graph-scraper` (npm)
-
-**사용 예시**:
-```ts
-import ogs from 'open-graph-scraper'
-
-const { result } = await ogs({ url: 'https://www.musinsa.com/products/...' })
-// result.ogTitle, result.ogImage, result.ogDescription
-```
+**데이터 소스**: `open-graph-scraper` (npm)
 
 **주의**:
 - 사이트별 OG 태그 품질 들쭉날쭉 (무신사도 페이지마다 다름)
@@ -213,55 +176,127 @@ const { result } = await ogs({ url: 'https://www.musinsa.com/products/...' })
 
 ---
 
+### 5. `updateProfile` (Sosie 컨셉 핵심)
+
+**역할**: 대화 중 사용자가 흘리는 취향을 감지해 프로필에 누적/교체.
+
+**입력 스키마**:
+```ts
+{
+  styles?: string[]
+  brands?: string[]
+  size?: 'XS' | 'S' | 'M' | 'L' | 'XL'
+  budget?: { min?: number; max?: number }   // BUDGET_RANGES 프리셋 중 하나로 매핑
+  mode: 'merge' | 'replace'                 // 기본 'merge'
+  reason: string                            // 한 문장 근거
+}
+```
+
+**출력 스키마**:
+```ts
+{
+  updated: { styles?, brands?, size?, budget? }   // 입력의 변경 필드만 echo
+  mode: 'merge' | 'replace'
+  reason: string
+}
+```
+
+**동작**:
+- 서버 `execute`는 입력을 그대로 echo (LLM이 무엇을 의도했는지 출력만 함)
+- **실제 적용은 클라이언트** — `ChatRoot`가 메시지 스캔으로 `tool-updateProfile.output-available`을 감지 → toolCallId로 dedupe → mode에 따라 머지/교체 → localStorage 저장
+- merge: 배열은 합집합, scalar(size/budget)은 새 값으로 덮어쓰기. budget은 단일 범위라 deep-merge 안 함
+- replace: 보낸 필드를 통째 교체 (배열 비우기 가능)
+
+**budget 프리셋 정책**:
+- AI는 자유 금액("20만원까지")을 받으면 4개 프리셋 중 가장 가까운 것으로 매핑
+- 프리셋: `{0~50000}`, `{50000~150000}`, `{150000~300000}`, `{300000~}`
+- 시스템 프롬프트 원칙 8-1에 강제 규칙으로 명시
+- 트레이드오프: UI 칩과 100% 매칭 vs 사용자 자유 표현 — 칩 동기화 우선
+
+구현:
+- Tool: [`src/lib/tools/updateProfile.ts`](../src/lib/tools/updateProfile.ts)
+- 클라이언트 반영: [`src/app/_components/ChatRoot.tsx`](../src/app/_components/ChatRoot.tsx)의 `appliedProfileUpdates` useEffect
+
+---
+
 ## Agent 흐름
 
-### 시나리오 A — 텍스트 시드
+### 시나리오 A — 프로필 보유, 텍스트 시드
 
 ```
-사용자: "발마칸 코트 추천해줘"
+프로필: 캐주얼·무신사 스탠다드·M·5~15만
+사용자: "청바지 추천해줘"
   ↓
-[1] Agent: searchCatalog({ category: "발마칸 코트" })
-    → 카탈로그에서 4~5개 발마칸 코트 반환
+[1] Agent: searchProducts({
+      keywords: ["청바지","데님"],
+      brand: "무신사 스탠다드",
+      priceMin: 50000, priceMax: 150000
+    })
   ↓
-[2] Agent: comparePrices({ productName: "유니폼브릿지 발마칸 싱글 코트" })
-    → 무신사 12만 / 공식몰 15만 / 29CM 13만
-  ↓
-[3] Agent 응답 (Streaming):
-    "요즘 발마칸은 오버핏이 핫해요. 유니폼브릿지가 디자인 단순하면서 가성비 좋습니다.
-    무신사에서 12만원으로 가장 저렴해요. 코스랑 와이드앵글도 비교해보세요."
-    + 상품 카드 그리드 (4개)
+[2] Agent 답변 (Streaming):
+    "캐주얼 좋아하시고 무신사 스탠다드 자주 입으시니까, 와이드 데님 어때요?
+    예산 안에서 베이직하게 활용 좋은 거 골라봤어요."
+    + 상품 카드 그리드
 ```
 
-### 시나리오 B — 이미지 시드 (멀티모달)
+### 시나리오 B — 대화 중 취향 학습
 
 ```
-사용자: [옷 사진 첨부 + "이거랑 비슷한 거"]
+사용자: "사실 빈티지도 좋아해"
+  ↓
+[1] Agent: updateProfile({
+      styles: ["빈티지"],
+      mode: "merge",
+      reason: "사용자가 빈티지 스타일 추가 언급"
+    })
+  ↓
+[2] 클라이언트: 결과 받아 localStorage 머지 (styles에 "빈티지" 합집합)
+  ↓
+[3] Agent 답변: "프로필에 반영했어요. 빈티지 무드 셔츠도 찾아드릴까요?"
+  ↓ (다음 검색부터 styles에 "빈티지" 포함됨)
+```
+
+### 시나리오 C — 예산 상향
+
+```
+사용자: "예산을 20만원까지로 늘려줘"
+  ↓
+[1] Agent: updateProfile({
+      budget: { min: 150000, max: 300000 },   // 자유 금액 → 15~30만 프리셋
+      mode: "merge",
+      reason: "사용자가 상한 예산 상향 요청"
+    })
+  ↓
+[2] 클라이언트: budget을 통째 교체 (deep-merge 안 함)
+  ↓
+[3] Agent 답변: "예산 범위 15~30만으로 반영했어요"
+```
+
+### 시나리오 D — 이미지 시드
+
+```
+사용자: [옷 사진 + "비슷한 거"]
   ↓
 이미지가 file part로 Gemini에 직접 전달 (별도 Tool X)
   ↓
 [1] Gemini 멀티모달 내부 처리:
-    이미지 시각 분석 → 카테고리("발마칸 코트") + 스타일 키워드("오버핏", "캐멀") 추출
+    이미지 시각 분석 → 카테고리("발마칸 코트") + 스타일 키워드("오버핏","캐멀") 추출
   ↓
-[2] Agent: searchCatalog({ category: "발마칸 코트", keywords: ["오버핏", "캐멀"] })
-    → 매칭 상품
+[2] Agent: searchProducts({ keywords: ["발마칸","오버핏","캐멀"] })
   ↓
-[3] Agent 응답 (Streaming):
-    "올려주신 사진은 캐멀톤 오버핏 발마칸이네요. 비슷한 디자인 4개 찾았어요."
-    + 상품 카드 그리드
+[3] Agent 답변 + 상품 카드 그리드
 ```
 
-### 시나리오 C — URL 시드
+### 시나리오 E — URL 시드
 
 ```
 사용자: "이거랑 비슷한 거 [무신사 URL]"
   ↓
 [1] Agent: parseProductUrl({ url })
-    → 제목/이미지/가격 메타
   ↓
-[2] Agent: searchCatalog({ category, keywords })
-    → 비슷한 상품
+[2] Agent: searchProducts({ keywords: 추출된 키워드 })
   ↓
-[3] Agent 응답
+[3] Agent 답변
 ```
 
 ---
@@ -270,10 +305,11 @@ const { result } = await ogs({ url: 'https://www.musinsa.com/products/...' })
 
 | Tool | 데이터 소스 |
 | --- | --- |
-| `searchCatalog` | `src/data/catalog.json` (in-memory, 현재 5개 실제 무신사 상품) |
+| `searchProducts` | 네이버 쇼핑 검색 API (무신사 입점 필터) |
 | `comparePrices` | 네이버 쇼핑 검색 API |
 | `parseProductUrl` | `open-graph-scraper` |
-| (이미지 입력) | Gemini 2.5 Flash Lite 멀티모달 native (별도 Tool 없음) |
+| `updateProfile` | 클라이언트 localStorage (`sosie:profile`) |
+| (이미지 입력) | Gemini Flash Lite 멀티모달 native (별도 Tool 없음) |
 
 ---
 
@@ -281,16 +317,19 @@ const { result } = await ogs({ url: 'https://www.musinsa.com/products/...' })
 
 실제 코드: [`src/app/api/chat/route.ts`](../src/app/api/chat/route.ts)
 
-원칙 6개로 구조화 (Gemini Lite의 보수적 Tool calling 성향 보완을 위해 강한 지시문 + few-shot 예시):
+원칙 8개 + 서브원칙 (Flash Lite의 보수적 Tool calling 성향 보완을 위해 강한 지시문 + few-shot 예시):
 
-1. **옷 키워드 한 단어라도 나오면 즉시 `searchCatalog`** — 추가 질문 X
-2. **가격 비교/판매처 비교 요청은 `comparePrices`** — searchCatalog 이후 자연 연결
-3. **URL 포함 시 `parseProductUrl` → searchCatalog 연쇄** — 비슷한 상품 찾기
-4. **이미지 첨부 시 Gemini가 직접 이미지 분석 → searchCatalog 호출** — 별도 Tool X
-5. **Tool 응답만으로 답변** — 가짜 상품/가격/판매처 만들지 X, 빈 결과면 솔직히
-6. **답변 톤** — 한국어, 친근/간결, 추천 이유 구체적
+1. **옷 키워드 한 단어라도 나오면 즉시 `searchProducts`** — 추가 질문 X, 카테고리 모호해도 일단 검색
+2. **사용자 프로필을 반드시 활용** — brand·priceMin·priceMax 자동 적용, 답변에 프로필 근거 한 줄 언급
+3. **가격 비교 요청은 `comparePrices`**
+4. **URL 포함 시 `parseProductUrl` → `searchProducts` 연쇄**
+5. **이미지 첨부 시 Gemini가 직접 이미지 분석 → `searchProducts` 호출** — 별도 Tool X
+6. **Tool 응답으로만 답변** — 가짜 상품/가격/판매처 만들지 X, 빈 결과면 솔직히
+7. **답변 톤** — 한국어, 친근한 스타일리스트, 추천 이유 한 줄, 단순 나열 X
+8. **대화 중 프로필 단서 감지 → `updateProfile` 호출** — 변경 필드만 1회 호출, mode/reason 포함
+   - **8-1**: budget은 4개 프리셋 중 하나로만 표현 (UI 칩과 매칭)
 
-예시 시나리오 5개를 프롬프트 끝에 포함 (텍스트/가격비교/URL/이미지/일반대화).
+원칙 + 예시 시나리오 7개를 프롬프트 끝에 포함 (텍스트/가격비교/URL/이미지/취향 추가/예산 변경/일반 대화).
 
 ---
 
@@ -298,13 +337,13 @@ const { result } = await ogs({ url: 'https://www.musinsa.com/products/...' })
 
 **환각 차단 3중 방어:**
 
-1. **Tool 입출력 Zod 스키마 강제** — Vercel AI SDK의 `tool` API + `parameters: z.object(...)`
-2. **응답 후처리** — Tool 응답을 카드 UI로 렌더링할 때 다시 Zod 파싱
-3. **시스템 프롬프트 금지 조항** — "카탈로그/Tool 응답 외 정보 답변 금지"
+1. **Tool 입출력 Zod 스키마 강제** — Vercel AI SDK의 `tool` API + `inputSchema`
+2. **응답 후처리** — Tool 응답을 카드 UI로 렌더링할 때 다시 Zod 파싱 (`searchProductsOutputSchema`)
+3. **시스템 프롬프트 금지 조항** — "Tool 응답 외 정보 답변 금지"
 
 **실패 케이스 처리:**
-- Tool 응답 빈 배열 → "찾은 결과 없습니다, 다른 키워드로 다시 찾아드릴까요?"
-- 네이버 API 실패 → 카탈로그 결과만으로 답변
+- Tool 응답 빈 배열 → "매칭되는 결과가 없어요, 다른 키워드로 다시 찾아볼까요?"
+- 네이버 API 실패 → 에러 토스트 + 다른 시도 제안
 - 이미지 분석 실패 → "이미지에서 옷을 인식하지 못했어요" 후 텍스트로 다시 요청
 
 ---
@@ -316,10 +355,10 @@ Vercel AI SDK는 Tool 호출을 streaming 이벤트로 노출 (`onToolCall`, `on
 
 | Tool 호출 | 사용자 화면 표시 |
 | --- | --- |
-| `searchCatalog` 시작 | `🔧 카탈로그에서 검색 중...` |
-| `searchCatalog` 완료 | `✓ 카탈로그 검색 완료` |
+| `searchProducts` 시작/완료 | `🔧 무신사 상품 검색 중...` / `✓ 무신사 상품 검색 완료` |
 | `comparePrices` 시작/완료 | `🔧 판매처 가격 비교 중...` / `✓ 판매처 가격 비교 완료` |
 | `parseProductUrl` 시작/완료 | `🔧 URL 정보 추출 중...` / `✓ URL 정보 추출 완료` |
+| `updateProfile` 시작/완료 | `🔧 프로필 업데이트 중...` / `✓ 프로필 업데이트 완료` |
 
 구현: [`src/components/ToolStatus.tsx`](../src/components/ToolStatus.tsx) (`LoaderIcon` 회전 / `CheckIcon` / `TriangleAlertIcon`)
 + AI 답변 시작 전 [`TypingIndicator`](../src/components/TypingIndicator.tsx) ("생각 중...")
@@ -328,20 +367,37 @@ Vercel AI SDK는 Tool 호출을 streaming 이벤트로 노출 (`onToolCall`, `on
 
 ---
 
-## V2 — 카탈로그 확장 (참고)
+## 프로필 데이터 모델
 
-- **무신사 파트너 API** 신청 / 제휴
-- **자체 크롤링 파이프라인** — 약관 확인 + robots.txt 존중
-- **자동 업데이트 cron** — 매일 인기 차트 → 카탈로그 갱신
-- **벡터 임베딩 검색** — Pinecone/Supabase pgvector로 시맨틱 검색
+[`src/types/profile.ts`](../src/types/profile.ts)
 
-(MVP에는 포함 X. README "향후 개선"에만 언급.)
+```ts
+profileSchema = z.object({
+  styles: z.array(z.string()).optional(),
+  brands: z.array(z.string()).optional(),
+  size: z.enum(['XS','S','M','L','XL']).optional(),
+  budget: z.object({
+    min: z.number().int().nonnegative().optional(),
+    max: z.number().int().nonnegative().optional(),
+  }).optional(),
+})
+```
+
+**옵션 상수**:
+- `STYLE_OPTIONS` — 캐주얼/미니멀/스트릿/빈티지/베이직/스포티/포멀/아메카지
+- `POPULAR_BRANDS` — 무신사 스탠다드/유니폼브릿지/디스이즈네버댓/커버낫/앤더슨벨/아이앱 스튜디오/아디다스/나이키
+- `SIZE_OPTIONS` — XS/S/M/L/XL
+- `BUDGET_RANGES` — 5만 이하 / 5~15만 / 15~30만 / 30만 이상
+
+**프로필 영속화**: [`src/utils/profile.ts`](../src/utils/profile.ts)의 `loadProfile`/`saveProfile`/`hasProfile`/`clearProfile`. localStorage key `sosie:profile`.
+
+**프로필 주입**: [`src/app/api/chat/route.ts`](../src/app/api/chat/route.ts)의 `formatProfile()`가 한 줄 텍스트로 변환해 system prompt 끝에 append. 클라이언트는 매 요청 `useChat`의 `body` 옵션으로 프로필을 함께 전송.
 
 ---
 
 ## 남은 작업
 
-- [ ] 카탈로그 확장 (현재 5개 → 10~15개)
-- [ ] Gemini Lite의 내부 tool_code 누출 케이스 — 마무리 단계에서 full `gemini-2.5-flash`로 교체 시도 (free tier 20/day 한도 주의)
-- [ ] Tool 호출 표시의 빠른 ✓ 완료가 인지 어렵다면 최소 노출 시간 추가 검토
-- [ ] (옵션) `comparePrices` / `parseProductUrl` 결과 시각화 (현재 텍스트만)
+- [ ] 자유 budget 입력 UI 추가 (현재는 4개 프리셋만)
+- [ ] 프로필 학습 확인 단계 ("이거 추가할까요?" Yes/No)
+- [ ] `comparePrices` / `parseProductUrl` 결과 카드 시각화 (현재 텍스트만)
+- [ ] Flash Lite의 내부 tool_code 누출 케이스 — 마무리 단계에서 full `gemini-2.5-flash`로 교체 시도 (free tier 20/day 한도 주의)

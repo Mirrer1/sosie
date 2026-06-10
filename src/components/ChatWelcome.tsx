@@ -1,8 +1,4 @@
-const SEED_EXAMPLES = [
-  '발마칸 코트 추천해줘',
-  '와이드 진 요즘 트렌드 알려줘',
-  '이런 옷 비슷한 거 찾아줘',
-]
+const SEED_EXAMPLES = ['청바지 추천해줘', '가을에 입을 셔츠 골라줘', '예산 안에서 코트 보여줘']
 
 // 메시지 없을 때 환영 화면
 const ChatWelcome = () => {
@@ -10,12 +6,12 @@ const ChatWelcome = () => {
     <div className="mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center gap-8 px-4 py-12 text-center">
       <div className="space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          닮은 옷, 다 모아드려요
+          내 취향을 닮은 옷, 같이 골라드려요
         </h1>
         <p className="text-muted-foreground mx-auto max-w-md text-sm md:text-base">
-          트렌드 따라 비슷한 옷이 여러 브랜드에서 나올 때,
+          스타일·브랜드·예산을 알려주시면
           <br />
-          깔끔하게 비교하고 추천받으세요.
+          무신사 풀에서 어울리는 옷을 골라드릴게요.
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
