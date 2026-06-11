@@ -117,7 +117,7 @@ const ChatComposer = ({
               </button>
             </div>
           )}
-          <div className="flex items-end gap-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
