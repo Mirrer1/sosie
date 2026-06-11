@@ -1,13 +1,16 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
+import { type UIMessage } from 'ai'
 import { ChevronDownIcon, ImageUpIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import ChatComposer from '@/components/chat/ChatComposer'
+import ChatEmptyResult from '@/components/chat/ChatEmptyResult'
 import ChatMessage from '@/components/chat/ChatMessage'
+import ChatToolError from '@/components/chat/ChatToolError'
 import ChatWelcome from '@/components/chat/ChatWelcome'
 import ImageLightbox from '@/components/chat/ImageLightbox'
 import ToolStatus from '@/components/chat/ToolStatus'
@@ -33,9 +36,23 @@ const fileToDataUrl = (file: File): Promise<string> => {
   })
 }
 
+// 도구 실패 시 교환 응답 제거
+const stripFailedExchanges = (msgs: UIMessage[]): UIMessage[] => {
+  const failedIds = new Set<string>()
+  msgs.forEach((msg, i) => {
+    const hasError = msg.parts.some((part) => 'state' in part && part.state === 'output-error')
+    if (msg.role === 'assistant' && hasError) {
+      failedIds.add(msg.id)
+      const prev = msgs[i - 1]
+      if (prev?.role === 'user') failedIds.add(prev.id)
+    }
+  })
+  return msgs.filter((msg) => !failedIds.has(msg.id))
+}
+
 // 채팅 페이지 루트
 const ChatRoot = () => {
-  const { messages, sendMessage, setMessages, status } = useChat()
+  const { messages, sendMessage, setMessages, status, regenerate } = useChat()
   const [input, setInput] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -105,6 +122,13 @@ const ChatRoot = () => {
     sendMessage({ text }, options)
   }
 
+  // 도구 실패 시 직전 응답을 다시 생성
+  const handleRetry = () => {
+    if (isLoading) return
+    isAtBottomRef.current = true
+    regenerate(profile ? { body: { profile } } : undefined)
+  }
+
   // 최신 메시지로 스크롤
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' })
@@ -166,8 +190,9 @@ const ChatRoot = () => {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored) as typeof messages
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed)
+        const cleaned = stripFailedExchanges(parsed)
+        if (Array.isArray(parsed) && cleaned.length > 0) {
+          setMessages(cleaned)
         }
       }
     } catch {
@@ -250,14 +275,15 @@ const ChatRoot = () => {
     }
   }, [messages])
 
-  // 메시지 변경 시 localStorage에 자동 저장
+  // 메시지 변경 시 실패 교환을 제외하고 localStorage에 자동 저장
   useEffect(() => {
-    if (messages.length === 0) {
+    const toSave = stripFailedExchanges(messages)
+    if (toSave.length === 0) {
       localStorage.removeItem(STORAGE_KEY)
       return
     }
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
     } catch {
       // 저장 용량 초과 등은 무시
     }
@@ -348,9 +374,21 @@ const ChatRoot = () => {
                     return (
                       <div key={idx} className="space-y-3">
                         <ToolStatus toolType={part.type} state={part.state} />
-                        {output.products.length > 0 && <ProductGrid products={output.products} />}
+                        {output.products.length > 0 ? (
+                          <ProductGrid products={output.products} />
+                        ) : (
+                          <ChatEmptyResult onSelect={handleExampleClick} disabled={isLoading} />
+                        )}
                       </div>
                     )
+                  }
+
+                  if (
+                    part.type.startsWith('tool-') &&
+                    'state' in part &&
+                    part.state === 'output-error'
+                  ) {
+                    return <ChatToolError key={idx} onRetry={handleRetry} disabled={isLoading} />
                   }
 
                   if (part.type.startsWith('tool-') && 'state' in part && part.state) {
@@ -372,6 +410,7 @@ const ChatRoot = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+            {status === 'error' && <ChatToolError onRetry={handleRetry} disabled={isLoading} />}
             <div ref={messagesEndRef} />
           </div>
         )}
