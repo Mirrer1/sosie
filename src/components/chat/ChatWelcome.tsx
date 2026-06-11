@@ -15,7 +15,7 @@ const ChatWelcome = ({ onExampleClick }: ChatWelcomeProps) => {
         <p className="text-muted-foreground mx-auto max-w-md text-sm md:text-base">
           스타일·브랜드·예산을 알려주시면
           <br />
-          무신사 풀에서 어울리는 옷을 골라드릴게요.
+          어울리는 옷을 골라드릴게요.
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">

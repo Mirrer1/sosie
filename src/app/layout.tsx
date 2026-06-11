@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Sosie — 내 취향을 닮은 옷, 같이 골라드려요',
-  description: '프로필 기반으로 무신사 풀에서 어울리는 옷을 골라주는 AI 패션 스타일리스트',
+  description: '프로필 기반으로 어울리는 옷을 골라주는 AI 패션 스타일리스트',
 }
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
