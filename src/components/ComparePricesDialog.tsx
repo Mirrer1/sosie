@@ -60,9 +60,9 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
 
   return (
     <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="line-clamp-2 text-base">
+          <DialogTitle className="line-clamp-2 pr-8 text-base">
             {product?.name ?? '가격 비교'}
           </DialogTitle>
           <DialogDescription>여러 판매처에서 찾은 비슷한 상품의 가격이에요.</DialogDescription>
@@ -106,7 +106,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <p className="text-muted-foreground text-xs">{s.seller}</p>
-                  <p className="line-clamp-1 text-sm">{s.title ?? product?.name}</p>
+                  <p className="line-clamp-2 text-sm">{s.title ?? product?.name}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">{s.price.toLocaleString()}원</p>
                     {s.price === lowestPrice && sortedSources.length > 1 && (
