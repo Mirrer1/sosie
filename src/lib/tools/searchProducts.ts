@@ -9,7 +9,7 @@ import {
 
 const NAVER_SHOP_API_URL = 'https://openapi.naver.com/v1/search/shop.json'
 const DISPLAY_COUNT = 20
-const RETURN_COUNT = 8
+const RETURN_COUNT = 6
 
 type NaverShopItem = {
   title: string

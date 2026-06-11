@@ -2,6 +2,7 @@
 
 import { useChat } from '@ai-sdk/react'
 import { ImageUpIcon } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -267,7 +268,13 @@ const ChatRoot = () => {
         ) : (
           <div className="animate-in fade-in mx-auto w-full max-w-3xl space-y-3 px-4 pt-6 pb-10 duration-300">
             {messages.map((msg) => (
-              <div key={msg.id} className="space-y-2">
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+                className="space-y-2"
+              >
                 {msg.parts.map((part, idx) => {
                   if (part.type === 'text') {
                     return (
@@ -324,9 +331,20 @@ const ChatRoot = () => {
                   }
                   return null
                 })}
-              </div>
+              </motion.div>
             ))}
-            {showTyping && <TypingIndicator />}
+            <AnimatePresence>
+              {showTyping && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                >
+                  <TypingIndicator />
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div ref={messagesEndRef} />
           </div>
         )}

@@ -11,7 +11,7 @@ const ProductCard = ({ product, onClick }: ProductCardProps) => {
     <button
       type="button"
       onClick={() => onClick(product)}
-      className="bg-card hover:bg-accent group flex flex-col overflow-hidden rounded-lg border text-left transition-colors"
+      className="bg-card hover:bg-accent group flex h-full flex-col overflow-hidden rounded-lg border text-left transition-colors"
     >
       <div className="bg-muted aspect-square overflow-hidden">
         <img
