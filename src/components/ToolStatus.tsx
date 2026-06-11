@@ -8,7 +8,7 @@ type ToolStatusProps = {
 }
 
 const TOOL_LABELS: Record<string, string> = {
-  'tool-searchProducts': '무신사 상품 검색',
+  'tool-searchProducts': '상품 검색',
   'tool-comparePrices': '판매처 가격 비교',
   'tool-parseProductUrl': 'URL 정보 추출',
   'tool-updateProfile': '프로필 업데이트',

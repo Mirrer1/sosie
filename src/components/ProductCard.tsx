@@ -23,10 +23,7 @@ const ProductCard = ({ product, onClick }: ProductCardProps) => {
       <div className="flex flex-1 flex-col gap-1 p-3">
         <p className="text-muted-foreground text-xs">{product.brand}</p>
         <p className="line-clamp-2 text-sm leading-snug">{product.name}</p>
-        <div className="mt-auto flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">{product.price.toLocaleString()}원</p>
-          <p className="text-muted-foreground text-xs">{product.mall}</p>
-        </div>
+        <p className="mt-auto text-sm font-semibold">{product.price.toLocaleString()}원</p>
       </div>
     </button>
   )
