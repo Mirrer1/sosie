@@ -1,5 +1,5 @@
-import ChatRoot from '@/app/_components/ChatRoot'
-import Header from '@/components/Header'
+import ChatRoot from '@/components/chat/ChatRoot'
+import Header from '@/components/layout/Header'
 
 const Home = () => {
   return (

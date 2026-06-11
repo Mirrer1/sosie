@@ -3,8 +3,8 @@
 import { motion } from 'motion/react'
 import { useState } from 'react'
 
-import ComparePricesDialog from '@/components/ComparePricesDialog'
-import ProductCard from '@/components/ProductCard'
+import ComparePricesDialog from '@/components/product/ComparePricesDialog'
+import ProductCard from '@/components/product/ProductCard'
 import { type MarketProduct } from '@/types/product'
 
 type ProductGridProps = {

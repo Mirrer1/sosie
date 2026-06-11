@@ -1,8 +1,8 @@
 import Link from 'next/link'
 
-import ClearChatButton from '@/components/ClearChatButton'
-import EditProfileButton from '@/components/EditProfileButton'
-import ModeToggle from '@/components/ModeToggle'
+import ClearChatButton from '@/components/chat/ClearChatButton'
+import ModeToggle from '@/components/layout/ModeToggle'
+import EditProfileButton from '@/components/profile/EditProfileButton'
 
 const Header = () => {
   return (

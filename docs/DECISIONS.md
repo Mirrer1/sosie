@@ -280,7 +280,7 @@
 - 온보딩 마법사: `src/components/OnboardingDialog.tsx`
 - 프로필 수정 버튼: `src/components/EditProfileButton.tsx`
 - Tool: `src/lib/tools/updateProfile.ts`
-- 클라이언트 반영: `src/app/_components/ChatRoot.tsx` (`appliedProfileUpdates` ref + useEffect)
+- 클라이언트 반영: `src/components/ChatRoot.tsx` (`appliedProfileUpdates` ref + useEffect)
 - 시스템 프롬프트: `src/app/api/chat/route.ts`
 
 **향후 재검토**:

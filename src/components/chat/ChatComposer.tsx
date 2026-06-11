@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
-import ImageLightbox from '@/components/ImageLightbox'
+import ImageLightbox from '@/components/chat/ImageLightbox'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ALLOWED_IMAGE_TYPES, validateImage } from '@/utils/image'
