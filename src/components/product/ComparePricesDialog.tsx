@@ -68,7 +68,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
           <DialogDescription>여러 판매처에서 찾은 비슷한 상품의 가격이에요.</DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[60vh] space-y-2 overflow-y-auto py-2">
+        <div className="-mr-2 max-h-[60vh] space-y-2 overflow-y-auto py-2 pr-2">
           {isLoading && (
             <div className="text-muted-foreground flex flex-col items-center gap-2 py-8 text-sm">
               <LoaderIcon className="h-5 w-5 animate-spin" />

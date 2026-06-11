@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import ClearChatButton from '@/components/chat/ClearChatButton'
 import ModeToggle from '@/components/layout/ModeToggle'
+import FavoritesButton from '@/components/product/FavoritesButton'
 import EditProfileButton from '@/components/profile/EditProfileButton'
 
 const Header = () => {
@@ -12,6 +13,7 @@ const Header = () => {
           Sosie
         </Link>
         <div className="flex items-center gap-1">
+          <FavoritesButton />
           <EditProfileButton />
           <ClearChatButton />
           <ModeToggle />

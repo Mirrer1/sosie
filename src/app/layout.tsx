@@ -3,6 +3,7 @@ import { Geist_Mono } from 'next/font/google'
 
 import './globals.css'
 import ThemeProvider from '@/components/layout/ThemeProvider'
+import FavoritesProvider from '@/components/product/FavoritesProvider'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
@@ -23,8 +24,10 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
     <html lang="ko" className={`${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex h-full flex-col overflow-hidden">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <TooltipProvider>{children}</TooltipProvider>
-          <Toaster />
+          <FavoritesProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+            <Toaster />
+          </FavoritesProvider>
         </ThemeProvider>
       </body>
     </html>
