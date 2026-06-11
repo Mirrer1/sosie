@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import ChatComposer from '@/components/chat/ChatComposer'
 import ChatEmptyResult from '@/components/chat/ChatEmptyResult'
 import ChatMessage from '@/components/chat/ChatMessage'
+import ChatMessageActions from '@/components/chat/ChatMessageActions'
 import ChatToolError from '@/components/chat/ChatToolError'
 import ChatWelcome from '@/components/chat/ChatWelcome'
 import ImageLightbox from '@/components/chat/ImageLightbox'
@@ -176,12 +177,12 @@ const ChatRoot = () => {
     if (file) acceptImage(file)
   }
 
-  // 맨 아래 근처일 때만 메시지 변경 시 자동 스크롤
+  // 맨 아래 근처일 때 메시지 변경/상태 전환 시 자동 스크롤
   useEffect(() => {
     if (isAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
     }
-  }, [messages])
+  }, [messages, status])
 
   // 마운트 시 localStorage에서 대화 히스토리, 프로필 복원
   // 첫 진입이면 온보딩
@@ -320,84 +321,99 @@ const ChatRoot = () => {
           </div>
         ) : (
           <div className="animate-in fade-in mx-auto w-full max-w-3xl space-y-3 px-4 pt-6 pb-10 duration-300">
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
-                className="space-y-2"
-              >
-                {msg.parts.map((part, idx) => {
-                  if (part.type === 'text') {
-                    return (
-                      <ChatMessage
-                        key={idx}
-                        role={msg.role === 'assistant' ? 'assistant' : 'user'}
-                        content={part.text}
-                      />
-                    )
-                  }
+            {messages.map((msg) => {
+              const isLast = msg.id === lastMessage?.id
+              const assistantText =
+                msg.role === 'assistant'
+                  ? msg.parts.reduce((acc, p) => (p.type === 'text' ? acc + p.text : acc), '')
+                  : ''
+              const showActions = assistantText.length > 0 && !(isLast && isLoading)
 
-                  if (part.type === 'file' && part.mediaType?.startsWith('image/')) {
-                    return (
-                      <div
-                        key={idx}
-                        className={cn(
-                          'flex w-full',
-                          msg.role === 'user' ? 'justify-end' : 'justify-start',
-                        )}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setLightboxUrl(part.url)}
-                          aria-label="이미지 확대"
-                          className="block h-48 w-48 overflow-hidden rounded-2xl border transition-opacity hover:opacity-90"
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="space-y-2"
+                >
+                  {msg.parts.map((part, idx) => {
+                    if (part.type === 'text') {
+                      return (
+                        <ChatMessage
+                          key={idx}
+                          role={msg.role === 'assistant' ? 'assistant' : 'user'}
+                          content={part.text}
+                        />
+                      )
+                    }
+
+                    if (part.type === 'file' && part.mediaType?.startsWith('image/')) {
+                      return (
+                        <div
+                          key={idx}
+                          className={cn(
+                            'flex w-full',
+                            msg.role === 'user' ? 'justify-end' : 'justify-start',
+                          )}
                         >
-                          <img
-                            src={part.url}
-                            alt="첨부 이미지"
-                            className="h-full w-full object-cover"
-                          />
-                        </button>
-                      </div>
-                    )
-                  }
+                          <button
+                            type="button"
+                            onClick={() => setLightboxUrl(part.url)}
+                            aria-label="이미지 확대"
+                            className="block h-48 w-48 overflow-hidden rounded-2xl border transition-opacity hover:opacity-90"
+                          >
+                            <img
+                              src={part.url}
+                              alt="첨부 이미지"
+                              className="h-full w-full object-cover"
+                            />
+                          </button>
+                        </div>
+                      )
+                    }
 
-                  if (
-                    part.type === 'tool-searchProducts' &&
-                    'state' in part &&
-                    part.state === 'output-available' &&
-                    part.output
-                  ) {
-                    const output = part.output as SearchProductsOutput
-                    return (
-                      <div key={idx} className="space-y-3">
-                        <ToolStatus toolType={part.type} state={part.state} />
-                        {output.products.length > 0 ? (
-                          <ProductGrid products={output.products} />
-                        ) : (
-                          <ChatEmptyResult onSelect={handleExampleClick} disabled={isLoading} />
-                        )}
-                      </div>
-                    )
-                  }
+                    if (
+                      part.type === 'tool-searchProducts' &&
+                      'state' in part &&
+                      part.state === 'output-available' &&
+                      part.output
+                    ) {
+                      const output = part.output as SearchProductsOutput
+                      return (
+                        <div key={idx} className="space-y-3">
+                          <ToolStatus toolType={part.type} state={part.state} />
+                          {output.products.length > 0 ? (
+                            <ProductGrid products={output.products} />
+                          ) : (
+                            <ChatEmptyResult onSelect={handleExampleClick} disabled={isLoading} />
+                          )}
+                        </div>
+                      )
+                    }
 
-                  if (
-                    part.type.startsWith('tool-') &&
-                    'state' in part &&
-                    part.state === 'output-error'
-                  ) {
-                    return <ChatToolError key={idx} onRetry={handleRetry} disabled={isLoading} />
-                  }
+                    if (
+                      part.type.startsWith('tool-') &&
+                      'state' in part &&
+                      part.state === 'output-error'
+                    ) {
+                      return <ChatToolError key={idx} onRetry={handleRetry} disabled={isLoading} />
+                    }
 
-                  if (part.type.startsWith('tool-') && 'state' in part && part.state) {
-                    return <ToolStatus key={idx} toolType={part.type} state={part.state} />
-                  }
-                  return null
-                })}
-              </motion.div>
-            ))}
+                    if (part.type.startsWith('tool-') && 'state' in part && part.state) {
+                      return <ToolStatus key={idx} toolType={part.type} state={part.state} />
+                    }
+                    return null
+                  })}
+                  {showActions && (
+                    <ChatMessageActions
+                      text={assistantText}
+                      onRegenerate={isLast && !isLoading ? handleRetry : undefined}
+                    />
+                  )}
+                </motion.div>
+              )
+            })}
             <AnimatePresence>
               {showTyping && (
                 <motion.div
