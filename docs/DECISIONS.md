@@ -364,3 +364,52 @@
 **향후 재검토**:
 - 무신사 파트너 API 도입 시 → 직접 mall URL 응답 → 검색 우회 불필요
 - 모달 UX 강화 — 정렬 옵션, 가격 변동 알림, 무료배송/적립 메타 표시 (네이버 API에 메타 없음)
+
+---
+
+## ADR-012: 가격 비교 동일 상품 정확도 — 검색어 정제 + 모델코드/브랜드 필터
+
+**상태**: Accepted
+
+**배경**: `comparePrices`가 상품명 그대로 네이버에 검색하니 `[브랜드]`·`(색상)`·모델코드가 검색을 방해하고, 같은 브랜드의 **다른 모델**(예: "FASTER STRONGER" vs "KWAIIIII")이 섞여 들어와 "비슷한 상품"의 정확도가 떨어짐.
+
+**결정**: `runComparePrices` 위에 3겹 필터를 얹음.
+1. **검색어 정제** (`cleanProductName`) — `[]`·`()`·모델코드 제거(브랜드명은 유지)해서 검색
+2. **결과 필터** (`filterRelevantSources`) — 브랜드 일치 필수 + 모델코드 충돌 제외 + 토큰 절반 이상 겹침. 전부 걸러지면 원본 유지(빈 모달 방지)
+3. **네이버 옵션** — `exclude=used:rental:cbshop`로 중고/렌탈/해외직구 제외
+
+**핵심 인사이트**: 모델코드 앞부분(`CTCDDC004`NV → `CTCDDC004`)이 진짜 제품 식별자. 같은 코드=같은 제품(색만 다름), 다른 코드=다른 제품.
+
+**트레이드오프**:
+- ✅ 같은 브랜드 다른 모델(KWAIIIII/FEARLESS 등) 제거 → 정확도 상승
+- ✅ 같은 제품·다른 판매처는 그대로 유지(가격 비교 목적 보존)
+- ❌ **코드 없는 동일 브랜드 다른 모델**은 못 거름 — 네이버 역검색 구조의 구조적 한계 (자체 상품 DB/productId 매칭이 있어야 완전 해결)
+
+**조절 손잡이**: `RELEVANCE_RATIO`(0.5), `MIN_TOKEN_MATCH`(2) — `comparePrices.ts` 상단 상수
+
+**구현 위치**: `src/lib/tools/comparePrices.ts` (`cleanProductName`/`extractModelCodes`/`filterRelevantSources`) + 테스트 `comparePrices.test.ts`
+
+---
+
+## ADR-013: 상품 찜/북마크 — Context + localStorage
+
+**상태**: Accepted
+
+**배경**: 추천 카드에서 맘에 드는 상품을 저장해 모아볼 방법이 없음. "내 취향 학습" 컨셉과도 연결되는 implicit 시그널.
+
+**결정**: **React Context(`FavoritesProvider`) + localStorage**(`sosie:favorites`). 카드 우상단 하트 토글 + 헤더 찜 목록 모달.
+
+**이유**:
+- 헤더 개수 뱃지와 카드 하트가 **동시에 반응**해야 함 → 전역 Context가 적합 (기존 이벤트 버스보다 깔끔)
+- 영속화는 프로필/대화와 동일하게 localStorage (ADR-001 일관)
+- 찜 목록 모달은 `ProductGrid` 재활용 → 하트 해제 + 가격비교 자동 연동
+
+**서브 결정 — 중첩 모달**: 찜 목록 안에서 가격비교 모달이 열리면 뒤 목록이 비쳐 지저분 → 가격비교가 열리는 동안 찜 모달 내용을 `opacity-0`로 숨김(`ProductGrid`의 `onCompareOpenChange` 콜백). 가격비교는 `body`로 포탈되므로 그대로 보임.
+
+**트레이드오프**:
+- ✅ 카드 클릭(가격비교)과 하트(찜)를 이벤트 전파 차단으로 분리
+- ✅ 컴포넌트 재활용으로 찜 목록에서도 가격비교까지 동작
+- ❌ localStorage 단일 기기 (ADR-001과 동일 한계)
+- ❌ 찜 데이터를 아직 추천 개인화에 활용하진 않음 (implicit 학습은 백로그)
+
+**구현 위치**: `src/components/product/` (`FavoritesProvider`/`ProductFavoriteButton`/`FavoritesButton`/`FavoritesDialog`) + `src/utils/favorites.ts` + `src/app/layout.tsx`(Provider 마운트)

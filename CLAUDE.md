@@ -25,7 +25,8 @@
 - ✅ Phase 4 Tool Calling — Tool 4개 완성 (`searchProducts`, `comparePrices`, `parseProductUrl`, `updateProfile`)
 - ✅ Phase 5 멀티모달 + 상품 카드 (이미지 입력 3종 + 라이트박스 + ProductGrid + ToolStatus)
 - ✅ Phase 6 부가 + 컨셉 피벗 (대화 히스토리 localStorage / 프로필 온보딩 + 수정 버튼 / 자동 학습 루프 / 카탈로그 폐기 / 카드 클릭 → 판매처 비교 모달)
-- ⏳ Phase 7 배포 + 문서 마무리 (문서 갱신 진행 중, Vercel 배포 + 시연 영상 + 제출 남음)
+- ⏳ Phase 7 배포 + 문서 마무리 (문서 갱신 진행 중, Vercel 배포 마무리)
+- 🔧 포폴 폴리시 (2026-06-11) — 찜/북마크 기능, 가격비교 정확도 개선(모델코드·브랜드 필터), motion 등장 애니메이션, 스마트 자동 스크롤, 검색 실패/빈결과 UI, 컴포넌트 기능별 폴더 정리, 미니멀 스크롤바
 
 **현재 모델**: `gemini-flash-lite-latest` (free tier 1500/day, 멀티모달, Tool Calling 모두 동작)
 **검색 풀**: 네이버 쇼핑 API + 무신사 입점 도메인 필터 (카탈로그 폐기)
@@ -42,7 +43,7 @@ V1 ("닮은 옷 다 모아드려요" + 큐레이션 카탈로그 5개) → V2 ("
 4. ✅ 헤더에 프로필 수정 버튼 (`EditProfileButton` + `sosie:open-profile` event)
 5. ✅ `updateProfile` Tool + 대화 중 자동 학습 루프 (`ChatRoot`의 `appliedProfileUpdates` ref)
 6. ✅ 문서 갱신 (README + docs/AGENT + docs/DECISIONS + 이 파일)
-7. ⏳ Vercel 배포 + 시연 영상 + 제출
+7. ⏳ Vercel 배포
 
 + 카드 클릭 → 판매처 비교 모달 (ADR-011): `comparePrices` 핵심 로직을 `runComparePrices`로 추출해 Tool + `/api/compare-prices` 라우트가 공유. `ComparePricesDialog`는 가격 오름차순/최저가 뱃지/네이버 차단 URL 검색 페이지 우회 포함.
 
@@ -190,9 +191,9 @@ const handleSubmit = async () => {
 
 ### 컴포넌트 위치
 
-- 한 페이지에서만 사용 → 해당 페이지 폴더 내 `_components/`
-- 여러 페이지에서 공유 → `src/components/{기능}/`
+- 기능별 폴더로 분류 → `src/components/{기능}/` (`chat`, `product`, `profile`, `layout`)
 - shadcn UI → `src/components/ui/`
+- 단일 페이지 앱이라 페이지 전용 `_components/`는 쓰지 않고 전부 기능별 폴더로 통합
 
 ---
 
@@ -241,14 +242,6 @@ const handleSubmit = async () => {
 - **브랜치**: `main` 하나만 사용
 - 이슈/PR 없음 — 커밋 컨벤션만 깔끔하게
 - 커밋 단위는 위 작업 흐름 따름
-
----
-
-## 회사/집 작업 동기화
-
-- 회사 → 집: 프로젝트 폴더 압축 (`.git` 포함, `node_modules` + `_private/` 제외 가능) → 메일 전송 → 집에서 풀기 + `npm install`
-- 집 → 회사: 반대로
-- 복잡해지면 회사 컴에 본인 GitHub 자격증명 등록 후 직접 push
 
 ---
 
@@ -321,8 +314,6 @@ const handleSubmit = async () => {
 - [ ] Vercel 배포
 - [ ] (선택) 도메인 연결
 - [ ] README.md 마무리 (각 docs/* 링크 포함)
-- [ ] 시연 영상 3분 녹화
-- [ ] 제출 (메일 또는 홈페이지 폼)
 
 ---
 
@@ -342,13 +333,12 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 **정책:**
 - `.env.local` gitignore
-- `.env.example` 키만 비워서 git에 올림 (평가자 참조용)
+- `.env.example` 키만 비워서 git에 올림 (참조용)
 
 ---
 
 ## 다른 소스 참조
 
-- **Blanoir MD** (`~/Desktop/BLANOIR_CLAUDE.md`) — 협업 규칙 원본
 - **Vercel AI SDK** (https://sdk.vercel.ai) — useChat, tool API, Streaming
 - **Google AI Studio** (https://aistudio.google.com) — Gemini API 문서
 - **네이버 개발자 센터** (https://developers.naver.com) — 쇼핑 검색 API
