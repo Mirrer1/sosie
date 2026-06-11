@@ -1,7 +1,7 @@
 'use client'
 
 import { useChat } from '@ai-sdk/react'
-import { ImageUpIcon } from 'lucide-react'
+import { ChevronDownIcon, ImageUpIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -43,7 +43,10 @@ const ChatRoot = () => {
   const [isHydrated, setIsHydrated] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [showScrollDown, setShowScrollDown] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const isAtBottomRef = useRef(true)
   const dragCounter = useRef(0)
   const appliedProfileUpdates = useRef<Set<string>>(new Set())
 
@@ -64,6 +67,8 @@ const ChatRoot = () => {
   // 입력 전송
   const handleSubmit = async () => {
     if ((!input.trim() && !imageFile) || isLoading) return
+
+    isAtBottomRef.current = true
 
     // 프로필 매 요청 body에 첨부
     const options = profile ? { body: { profile } } : undefined
@@ -95,8 +100,24 @@ const ChatRoot = () => {
   // 웰컴 화면 예시 칩 클릭 시 즉시 전송
   const handleExampleClick = (text: string) => {
     if (isLoading) return
+    isAtBottomRef.current = true
     const options = profile ? { body: { profile } } : undefined
     sendMessage({ text }, options)
+  }
+
+  // 최신 메시지로 스크롤
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' })
+  }
+
+  // 스크롤 위치로 맨 아래 근접 여부 판단, 버튼 노출 토글
+  const handleScroll = () => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+    const atBottom = distance < 80
+    isAtBottomRef.current = atBottom
+    setShowScrollDown(!atBottom)
   }
 
   // 드래그 진입, Files 타입 확인하고 counter 증가
@@ -131,9 +152,11 @@ const ChatRoot = () => {
     if (file) acceptImage(file)
   }
 
-  // 메시지 변경 시 하단으로 자동 스크롤
+  // 맨 아래 근처일 때만 메시지 변경 시 자동 스크롤
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
+    if (isAtBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
+    }
   }, [messages])
 
   // 마운트 시 localStorage에서 대화 히스토리, 프로필 복원
@@ -248,7 +271,11 @@ const ChatRoot = () => {
       onDrop={handleDrop}
       className="relative flex min-h-0 flex-1 flex-col"
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex min-h-0 flex-1 flex-col overflow-auto"
+      >
         {!isHydrated ? (
           <div className="animate-in fade-in mx-auto w-full max-w-3xl space-y-4 px-4 pt-6 pb-10 duration-300">
             <div className="flex justify-end">
@@ -349,6 +376,23 @@ const ChatRoot = () => {
           </div>
         )}
       </div>
+      <AnimatePresence>
+        {showScrollDown && (
+          <motion.button
+            type="button"
+            onClick={() => scrollToBottom('smooth')}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.15 }}
+            aria-label="맨 아래로"
+            className="bg-background/90 hover:bg-accent absolute bottom-24 left-1/2 z-30 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur"
+          >
+            <ChevronDownIcon className="h-5 w-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       <ChatComposer
         value={input}
         onChange={setInput}
