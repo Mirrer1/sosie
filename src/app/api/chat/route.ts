@@ -122,7 +122,7 @@ const formatProfile = (profile?: Profile | null): string => {
     if (text) lines.push(`- 예산: ${text}`)
   }
   if (lines.length === 0) return ''
-  return `\n\n## 사용자 프로필\n${lines.join('\n')}\n\n위 프로필을 추천에 반드시 반영하세요.`
+  return `\n\n## 사용자 프로필 (최신 기준 · 항상 우선)\n${lines.join('\n')}\n\n이 프로필이 항상 최신 기준입니다. 이전 대화에서 searchProducts를 다른 예산·브랜드·사이즈로 호출했더라도, 지금부터는 그 옛 인자를 무시하고 반드시 위 프로필 값으로 검색하세요.`
 }
 
 // Gemini Streaming 채팅 메시지 응답 (Tool Calling 지원)
