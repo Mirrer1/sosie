@@ -5,6 +5,7 @@ import {
   buildQuery,
   dedupeByName,
   isMusinsa,
+  isRelevantItem,
   mapNaverItem,
   scoreProduct,
 } from './searchProducts'
@@ -137,6 +138,39 @@ describe('buildOutput', () => {
     const output = buildOutput(response, { keywords: ['청바지'] })
 
     expect(output.products).toHaveLength(1)
+  })
+})
+
+describe('isRelevantItem', () => {
+  it('중고/도매 등 노이즈 키워드 포함 시 제외', () => {
+    expect(isRelevantItem({ title: '무신사 청바지 <b>중고</b>' })).toBe(false)
+    expect(isRelevantItem({ title: '데님 도매 100장' })).toBe(false)
+  })
+
+  it('패션 외 카테고리는 제외', () => {
+    expect(isRelevantItem({ title: '코트걸이', category1: '가구/인테리어' })).toBe(false)
+    expect(isRelevantItem({ title: '울 코트', category1: '패션의류' })).toBe(true)
+  })
+
+  it('카테고리 없으면 통과', () => {
+    expect(isRelevantItem({ title: '와이드 청바지' })).toBe(true)
+  })
+})
+
+describe('buildOutput 노이즈 필터', () => {
+  it('패션 외 카테고리 아이템은 결과에서 제외', () => {
+    const response = {
+      total: 2,
+      display: 2,
+      items: [
+        { ...SAMPLE_ITEM, title: '청바지 옷걸이', productId: 'noise', category1: '생활/건강' },
+        SAMPLE_ITEM,
+      ],
+    }
+    const output = buildOutput(response, { keywords: ['청바지'] })
+
+    expect(output.products).toHaveLength(1)
+    expect(output.products[0].id).toBe('mssss-001')
   })
 })
 

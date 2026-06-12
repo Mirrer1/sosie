@@ -13,6 +13,8 @@ const RETURN_COUNT = 6
 const KEYWORD_SCORE = 3
 const BRAND_SCORE = 4
 const PRICE_BONUS = 2
+const FASHION_CATEGORY = '패션'
+const NOISE_KEYWORDS = ['중고', '리퍼', '렌탈', '대여', '도매', '사은품']
 
 // 공백 제거 + 소문자 정규화
 const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase()
@@ -63,9 +65,17 @@ export const buildQuery = ({
   return parts.join(' ')
 }
 
-// 무신사 입점 필터 (link 도메인이 musinsa.com인지)
+// 무신사 입점 필터
 export const isMusinsa = (item: { link?: string; mallName?: string }): boolean =>
   Boolean(item.link?.includes('musinsa.com')) || Boolean(item.mallName?.includes('무신사'))
+
+// 패션 외 카테고리와 중고/도매 등 노이즈 아이템 제외
+export const isRelevantItem = (item: { title?: string; category1?: string }): boolean => {
+  const name = stripHtml(item.title ?? '')
+  if (NOISE_KEYWORDS.some((keyword) => name.includes(keyword))) return false
+  if (item.category1 && !item.category1.includes(FASHION_CATEGORY)) return false
+  return true
+}
 
 // 가격 범위 필터
 const matchesPrice = (product: MarketProduct, priceMin?: number, priceMax?: number): boolean => {
@@ -113,6 +123,7 @@ export const buildOutput = (
 ): SearchProductsOutput => {
   const candidates = response.items
     .filter((item) => (input.includeOtherMalls ? true : isMusinsa(item)))
+    .filter(isRelevantItem)
     .map(mapNaverItem)
     .filter((p) => matchesPrice(p, input.priceMin, input.priceMax))
 
