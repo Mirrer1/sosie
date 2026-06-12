@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildOutput, buildQuery, isMusinsa, mapNaverItem } from './searchProducts'
+import {
+  buildOutput,
+  buildQuery,
+  dedupeByName,
+  isMusinsa,
+  mapNaverItem,
+  scoreProduct,
+} from './searchProducts'
 
 const SAMPLE_ITEM = {
   title: '<b>무신사 스탠다드</b> 와이드 청바지',
@@ -102,5 +109,59 @@ describe('buildOutput', () => {
 
     expect(output.products.every((p) => p.price >= 30000 && p.price <= 100000)).toBe(true)
     expect(output.products).toHaveLength(1)
+  })
+
+  it('브랜드 일치 상품을 네이버 순서보다 위로 재정렬', () => {
+    const response = {
+      total: 2,
+      display: 2,
+      items: [
+        { ...SAMPLE_ITEM, title: '무신사 베이직 셔츠', productId: 'a', brand: '무신사' },
+        { ...SAMPLE_ITEM, title: '커버낫 옥스포드 셔츠', productId: 'b', brand: '커버낫' },
+      ],
+    }
+    const output = buildOutput(response, { keywords: ['셔츠'], brand: '커버낫' })
+
+    expect(output.products[0].id).toBe('b')
+  })
+
+  it('몰만 다른 동일 상품명은 1개만 반환', () => {
+    const response = {
+      total: 2,
+      display: 2,
+      items: [
+        SAMPLE_ITEM,
+        { ...SAMPLE_ITEM, productId: 'dup', link: 'https://link.musinsa.com/dup' },
+      ],
+    }
+    const output = buildOutput(response, { keywords: ['청바지'] })
+
+    expect(output.products).toHaveLength(1)
+  })
+})
+
+describe('dedupeByName', () => {
+  it('정규화된 상품명이 같으면 첫 항목만 남김', () => {
+    const products = [
+      mapNaverItem({ ...SAMPLE_ITEM, productId: '1' }),
+      mapNaverItem({ ...SAMPLE_ITEM, productId: '2' }),
+      mapNaverItem({ ...SAMPLE_ITEM, title: '커버낫 셔츠', productId: '3' }),
+    ]
+    const result = dedupeByName(products)
+
+    expect(result).toHaveLength(2)
+    expect(result[0].id).toBe('1')
+  })
+})
+
+describe('scoreProduct', () => {
+  it('키워드와 브랜드가 일치할수록 점수가 높음', () => {
+    const matched = mapNaverItem({ ...SAMPLE_ITEM, title: '커버낫 와이드 청바지', brand: '커버낫' })
+    const partial = mapNaverItem({ ...SAMPLE_ITEM, title: '무신사 후드 티셔츠', brand: '무신사' })
+
+    const high = scoreProduct(matched, { keywords: ['청바지', '와이드'], brand: '커버낫' })
+    const low = scoreProduct(partial, { keywords: ['청바지', '와이드'], brand: '커버낫' })
+
+    expect(high).toBeGreaterThan(low)
   })
 })
