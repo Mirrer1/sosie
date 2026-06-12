@@ -136,6 +136,7 @@ export const POST = async (req: Request) => {
     model: google('gemini-flash-lite-latest'),
     system: BASE_SYSTEM_PROMPT + formatProfile(profile),
     messages: modelMessages,
+    temperature: 0.7,
     tools: {
       searchProducts,
       comparePrices,
