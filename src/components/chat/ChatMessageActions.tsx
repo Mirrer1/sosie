@@ -3,6 +3,8 @@
 import { CopyIcon, RotateCwIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
 type ChatMessageActionsProps = {
   text: string
   onRegenerate?: () => void
@@ -22,23 +24,37 @@ const ChatMessageActions = ({ text, onRegenerate }: ChatMessageActionsProps) => 
 
   return (
     <div className="text-muted-foreground flex items-center gap-0.5 pl-1">
-      <button
-        type="button"
-        onClick={handleCopy}
-        aria-label="복사"
-        className="hover:bg-accent hover:text-foreground rounded-md p-1.5 transition-colors"
-      >
-        <CopyIcon className="h-3.5 w-3.5" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label="복사"
+              className="hover:bg-accent hover:text-foreground cursor-pointer rounded-md p-1.5 transition-colors"
+            >
+              <CopyIcon className="h-3.5 w-3.5" />
+            </button>
+          }
+        />
+        <TooltipContent>복사</TooltipContent>
+      </Tooltip>
       {onRegenerate && (
-        <button
-          type="button"
-          onClick={onRegenerate}
-          aria-label="다시 생성"
-          className="hover:bg-accent hover:text-foreground rounded-md p-1.5 transition-colors"
-        >
-          <RotateCwIcon className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                onClick={onRegenerate}
+                aria-label="다시 생성"
+                className="hover:bg-accent hover:text-foreground cursor-pointer rounded-md p-1.5 transition-colors"
+              >
+                <RotateCwIcon className="h-3.5 w-3.5" />
+              </button>
+            }
+          />
+          <TooltipContent>다시 생성</TooltipContent>
+        </Tooltip>
       )}
     </div>
   )

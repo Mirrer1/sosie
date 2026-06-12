@@ -25,7 +25,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
       <body className="flex h-full flex-col overflow-hidden">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <FavoritesProvider>
-            <TooltipProvider>{children}</TooltipProvider>
+            <TooltipProvider delay={300}>{children}</TooltipProvider>
             <Toaster />
           </FavoritesProvider>
         </ThemeProvider>

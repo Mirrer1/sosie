@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // 대화 내역 초기화
 const ClearChatButton = () => {
@@ -27,13 +28,20 @@ const ClearChatButton = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button variant="ghost" size="icon" aria-label="대화 지우기">
-            <EraserIcon className="h-[1.2rem] w-[1.2rem]" />
-          </Button>
-        }
-      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DialogTrigger
+              render={
+                <Button variant="ghost" size="icon" aria-label="대화 지우기">
+                  <EraserIcon className="h-[1.2rem] w-[1.2rem]" />
+                </Button>
+              }
+            />
+          }
+        />
+        <TooltipContent>대화 지우기</TooltipContent>
+      </Tooltip>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>대화 지우기</DialogTitle>
