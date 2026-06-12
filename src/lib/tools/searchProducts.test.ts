@@ -4,9 +4,11 @@ import {
   buildOutput,
   buildQuery,
   dedupeByName,
+  expandKeywords,
   isMusinsa,
   isRelevantItem,
   mapNaverItem,
+  matchesKeywords,
   scoreProduct,
 } from './searchProducts'
 
@@ -171,6 +173,73 @@ describe('buildOutput 노이즈 필터', () => {
 
     expect(output.products).toHaveLength(1)
     expect(output.products[0].id).toBe('mssss-001')
+  })
+})
+
+describe('matchesKeywords', () => {
+  it('키워드가 상품명에 하나라도 있으면 통과', () => {
+    const product = mapNaverItem({ ...SAMPLE_ITEM, title: '와이드 데님 팬츠' })
+
+    expect(matchesKeywords(product, ['청바지', '데님'])).toBe(true)
+  })
+
+  it('키워드가 전혀 없으면 제외', () => {
+    const product = mapNaverItem({ ...SAMPLE_ITEM, title: '가죽 벨트', brand: '무신사' })
+
+    expect(matchesKeywords(product, ['청바지', '데님'])).toBe(false)
+  })
+})
+
+describe('buildOutput 키워드 정확도 필터', () => {
+  it('키워드와 무관한 상품은 결과에서 제외', () => {
+    const response = {
+      total: 2,
+      display: 2,
+      items: [SAMPLE_ITEM, { ...SAMPLE_ITEM, title: '무신사 가죽 벨트', productId: 'belt' }],
+    }
+    const output = buildOutput(response, { keywords: ['청바지'] })
+
+    expect(output.products).toHaveLength(1)
+    expect(output.products[0].id).toBe('mssss-001')
+  })
+
+  it('키워드가 전부 안 맞아도 카테고리 결과가 있으면 비우지 않음', () => {
+    const response = {
+      total: 2,
+      display: 2,
+      items: [
+        { ...SAMPLE_ITEM, title: '와이드 데님 팬츠', productId: 'd1' },
+        { ...SAMPLE_ITEM, title: '슬림 데님 팬츠', productId: 'd2' },
+      ],
+    }
+    const output = buildOutput(response, { keywords: ['청바지'] })
+
+    expect(output.products).toHaveLength(2)
+  })
+
+  it('동의어 매칭으로 데님은 통과, 무관 상품은 제외', () => {
+    const response = {
+      total: 2,
+      display: 2,
+      items: [
+        { ...SAMPLE_ITEM, title: '와이드 데님 팬츠', productId: 'denim' },
+        { ...SAMPLE_ITEM, title: '가죽 벨트', productId: 'belt' },
+      ],
+    }
+    const output = buildOutput(response, { keywords: ['청바지'] })
+
+    expect(output.products).toHaveLength(1)
+    expect(output.products[0].id).toBe('denim')
+  })
+})
+
+describe('expandKeywords', () => {
+  it('같은말을 추가', () => {
+    expect(expandKeywords(['청바지'])).toContain('데님')
+  })
+
+  it('같은말 없으면 원본만 유지', () => {
+    expect(expandKeywords(['셔츠'])).toEqual(['셔츠'])
   })
 })
 

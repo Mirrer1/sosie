@@ -16,6 +16,22 @@ const PRICE_BONUS = 2
 const FASHION_CATEGORY = '패션'
 const NOISE_KEYWORDS = ['중고', '리퍼', '렌탈', '대여', '도매', '사은품']
 
+// 대화 프롬프트 상품명 단어로 매핑
+const KEYWORD_SYNONYMS: Record<string, string[]> = {
+  청바지: ['데님'],
+  맨투맨: ['스웨트셔츠', '스웨트'],
+  후드티: ['후디'],
+  후드: ['후디'],
+  운동화: ['스니커즈'],
+  바지: ['팬츠'],
+  반바지: ['숏팬츠', '하프팬츠'],
+  치마: ['스커트'],
+  니트: ['스웨터'],
+  가디건: ['카디건'],
+  자켓: ['재킷'],
+  재킷: ['자켓'],
+}
+
 // 공백 제거 + 소문자 정규화
 const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase()
 
@@ -84,6 +100,23 @@ const matchesPrice = (product: MarketProduct, priceMin?: number, priceMax?: numb
   return true
 }
 
+// 검색 키워드에 같은말을 더해 매칭 폭을 넓힘
+export const expandKeywords = (keywords: string[]): string[] => {
+  const result = new Set<string>()
+  for (const keyword of keywords) {
+    result.add(keyword)
+    const synonyms = KEYWORD_SYNONYMS[keyword.replace(/\s+/g, '')]
+    if (synonyms) synonyms.forEach((s) => result.add(s))
+  }
+  return [...result]
+}
+
+// 키워드가 상품명·브랜드에 하나도 없으면 제외하고 동의어는 살림
+export const matchesKeywords = (product: MarketProduct, keywords: string[]): boolean => {
+  const haystack = normalize(`${product.name} ${product.brand}`)
+  return keywords.some((keyword) => haystack.includes(normalize(keyword)))
+}
+
 // 상품명 정규화 기준 중복 제거, 몰만 다른 동일 상품은 1개만 남김
 export const dedupeByName = (products: MarketProduct[]): MarketProduct[] => {
   const seen = new Set<string>()
@@ -127,8 +160,14 @@ export const buildOutput = (
     .map(mapNaverItem)
     .filter((p) => matchesPrice(p, input.priceMin, input.priceMax))
 
-  const products = dedupeByName(candidates)
-    .map((product) => ({ product, score: scoreProduct(product, input) }))
+  const expanded = { ...input, keywords: expandKeywords(input.keywords) }
+
+  // 키워드 매칭이 하나라도 있으면 그것만, 전부 없으면 카테고리 결과를 그대로 사용
+  const matched = candidates.filter((p) => matchesKeywords(p, expanded.keywords))
+  const pool = matched.length > 0 ? matched : candidates
+
+  const products = dedupeByName(pool)
+    .map((product) => ({ product, score: scoreProduct(product, expanded) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, RETURN_COUNT)
     .map((entry) => entry.product)
