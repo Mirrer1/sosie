@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildOutput,
   buildQuery,
+  buildQueryVariants,
   dedupeByName,
   expandKeywords,
   isMusinsa,
@@ -60,6 +61,20 @@ describe('buildQuery', () => {
     expect(buildQuery({ keywords: ['청바지', '와이드'], includeOtherMalls: true })).toBe(
       '청바지 와이드',
     )
+  })
+})
+
+describe('buildQueryVariants', () => {
+  it('브랜드와 보조 키워드를 단계적으로 완화', () => {
+    const variants = buildQueryVariants({ keywords: ['셔츠', '출근'], brand: '커버낫' })
+
+    expect(variants[0]).toBe('무신사 커버낫 셔츠 출근')
+    expect(variants).toContain('무신사 셔츠 출근')
+    expect(variants).toContain('무신사 셔츠')
+  })
+
+  it('완화할 게 없으면 단일 쿼리', () => {
+    expect(buildQueryVariants({ keywords: ['청바지'] })).toEqual(['무신사 청바지'])
   })
 })
 

@@ -8,8 +8,9 @@ import {
 } from '@/types/tool'
 
 const NAVER_SHOP_API_URL = 'https://openapi.naver.com/v1/search/shop.json'
-const DISPLAY_COUNT = 20
+const DISPLAY_COUNT = 100
 const RETURN_COUNT = 6
+const POOL_COUNT = 18
 const KEYWORD_SCORE = 3
 const BRAND_SCORE = 4
 const PRICE_BONUS = 2
@@ -34,6 +35,25 @@ const KEYWORD_SYNONYMS: Record<string, string[]> = {
 
 // 공백 제거 + 소문자 정규화
 const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase()
+
+// 앞쪽(상위)일수록 높은 가중치로 count개를 비복원 추출
+const weightedSample = <T>(items: T[], count: number): T[] => {
+  const pool = [...items]
+  const picked: T[] = []
+  while (picked.length < count && pool.length > 0) {
+    const total = (pool.length * (pool.length + 1)) / 2
+    let r = Math.random() * total
+    let index = 0
+    for (; index < pool.length - 1; index++) {
+      const weight = pool.length - index
+      if (r < weight) break
+      r -= weight
+    }
+    picked.push(pool[index])
+    pool.splice(index, 1)
+  }
+  return picked
+}
 
 type NaverShopItem = {
   title: string
@@ -79,6 +99,20 @@ export const buildQuery = ({
   if (brand) parts.push(brand)
   parts.push(...keywords)
   return parts.join(' ')
+}
+
+// 결과가 없을 때 단계적으로 완화해 시도할 쿼리 목록 (구체 -> 광범위)
+export const buildQueryVariants = (input: SearchProductsInput): string[] => {
+  const variants = [buildQuery(input)]
+  if (input.brand) {
+    variants.push(buildQuery({ ...input, brand: undefined }))
+  }
+  if (input.keywords.length > 1) {
+    variants.push(
+      buildQuery({ keywords: [input.keywords[0]], includeOtherMalls: input.includeOtherMalls }),
+    )
+  }
+  return [...new Set(variants)]
 }
 
 // 무신사 입점 필터
@@ -169,7 +203,7 @@ export const buildOutput = (
   const products = dedupeByName(pool)
     .map((product) => ({ product, score: scoreProduct(product, expanded) }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, RETURN_COUNT)
+    .slice(0, POOL_COUNT)
     .map((entry) => entry.product)
 
   return { products }
@@ -208,8 +242,19 @@ export const searchProducts = tool({
     '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)를 함께 넣어 매칭률을 높이세요. 기본으로 무신사 입점 상품만 반환합니다.',
   inputSchema: searchProductsInputSchema,
   execute: async (input) => {
-    const query = buildQuery(input)
-    const response = await fetchNaverShop(query)
-    return buildOutput(response, input)
+    const collected: MarketProduct[] = []
+    const seen = new Set<string>()
+    for (const query of buildQueryVariants(input)) {
+      const response = await fetchNaverShop(query)
+      const { products } = buildOutput(response, input)
+      for (const product of products) {
+        const key = normalize(product.name)
+        if (seen.has(key)) continue
+        seen.add(key)
+        collected.push(product)
+      }
+      if (collected.length >= POOL_COUNT) break
+    }
+    return { products: weightedSample(collected, RETURN_COUNT) }
   },
 })
