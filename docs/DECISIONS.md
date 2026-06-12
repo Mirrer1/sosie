@@ -413,3 +413,32 @@
 - ❌ 찜 데이터를 아직 추천 개인화에 활용하진 않음 (implicit 학습은 백로그)
 
 **구현 위치**: `src/components/product/` (`FavoritesProvider`/`ProductFavoriteButton`/`FavoritesButton`/`FavoritesDialog`) + `src/utils/favorites.ts` + `src/app/layout.tsx`(Provider 마운트)
+
+---
+
+## ADR-014: searchProducts 결과 품질 — 필터·재랭킹·동의어·가중 랜덤
+
+**상태**: Accepted
+
+**배경**: 네이버 쇼핑 응답을 거의 날것으로 상위 N개만 잘라 반환하니 (1) 비패션·노이즈 상품이 섞이고 (2) 프로필/키워드와 덜 맞는 게 위에 오며 (3) 같은 검색이면 매번 동일한 결과만 나옴. 또 무신사 표기 차이("청바지"를 "데님"으로 표기)로 키워드 필터가 통째로 0건을 내기도 함.
+
+**결정**: `buildOutput`에 다단계 가공을 얹고 반환을 가중 랜덤으로 전환.
+1. **노이즈 필터** (`isRelevantItem`) — 비패션 카테고리 + 중고/도매 제외
+2. **정확도 필터** (`matchesKeywords`) — 키워드 무관 상품 제외, 단 전부 걸러지면 카테고리 결과로 폴백(0건 방지)
+3. **동의어 보정** (`expandKeywords`) — 표기 차이(청바지↔데님 등) 매핑, 모델이 빠뜨려도 매칭 유지
+4. **재랭킹** (`scoreProduct`) + 중복 제거(`dedupeByName`) — 키워드·브랜드·예산 근접도로 정렬
+5. **0건 완화 재시도** (`buildQueryVariants`) — 검색어가 너무 좁으면 단어를 줄여 재검색 (`display`도 20→100 확대)
+6. **가중 랜덤** (`weightedSample`) — 상위 18개 풀에서 상위 우대 확률로 6개 추출
+
+**핵심 트레이드오프 — 다양성 vs 정확도**: 균등 셔플은 다양성은 크나 하위 상품이 동일 확률로 떠 정확도가 떨어짐. 풀을 키우되(18) **상위 가중 랜덤**으로 뽑아 "매번 다르되 좋은 게 더 자주" 균형을 맞춤.
+
+**트레이드오프**:
+- ✅ 비패션·무관 상품 제거, 프로필 적합 상품 우선
+- ✅ 같은 칩 반복 클릭에도 결과가 다양 (데모 인상)
+- ✅ 동의어·완화로 0건 빈도 감소
+- ❌ 동의어 맵은 수기 관리(주요 카테고리만) — 누락 시 모델 키워드에 의존
+- ❌ 재고 적은 카테고리는 풀이 작아 다양성 제한
+
+**조절 손잡이**: `RETURN_COUNT`(6) / `POOL_COUNT`(18) / `DISPLAY_COUNT`(100) / `KEYWORD_SYNONYMS` — `searchProducts.ts` 상단 상수
+
+**구현 위치**: `src/lib/tools/searchProducts.ts` + 테스트 `searchProducts.test.ts`

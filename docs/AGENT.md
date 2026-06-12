@@ -83,7 +83,7 @@
 ```
 GET https://openapi.naver.com/v1/search/shop.json
   ?query={query}
-  &display=20
+  &display=100
   &sort=sim
 
 Headers:
@@ -91,10 +91,14 @@ Headers:
   X-Naver-Client-Secret: ${NAVER_CLIENT_SECRET}
 ```
 
-**무신사 입점 필터 전략 (구현)**:
-- `buildQuery` — `includeOtherMalls=false`면 "무신사" 키워드를 query에 강제 첨부 + 브랜드 + 사용자 keywords 조립
-- `isMusinsa` — 응답 아이템의 `link`가 `musinsa.com` 도메인이거나 `mallName`이 "무신사" 포함
-- 필터 후 가격 범위 매칭, 상위 8개 반환
+**결과 가공 파이프라인 (구현)** — 상세 [`DECISIONS.md`](DECISIONS.md) ADR-014:
+- `buildQuery` — `includeOtherMalls=false`면 "무신사" 키워드 강제 첨부 + 브랜드 + keywords 조립
+- `isMusinsa` — `link`가 `musinsa.com` 도메인이거나 `mallName`이 "무신사" 포함
+- `isRelevantItem` — 비패션 카테고리(`category1`) + 중고/도매 등 노이즈 제외
+- `matchesKeywords` + `expandKeywords` — 키워드(동의어 포함: 청바지↔데님 등)가 상품명에 하나라도 맞는 것만, 전부 안 맞으면 카테고리 결과로 폴백
+- `scoreProduct` + `dedupeByName` — 키워드·브랜드·예산 근접도로 재랭킹 + 중복 제거
+- `buildQueryVariants` — 0건이면 브랜드/보조 키워드를 단계적으로 빼며 재검색
+- 상위 18개 풀에서 `weightedSample`(상위 가중 랜덤)로 6개 반환 → 같은 검색도 매번 다른 조합, 관련도 유지
 
 응답의 `mallName`은 흔히 "네이버" 또는 셀러스토어 이름이 와서 신뢰가 떨어짐 → **링크 도메인 기준 필터**가 더 정확. 구현: [`src/lib/tools/searchProducts.ts`](../src/lib/tools/searchProducts.ts)
 
