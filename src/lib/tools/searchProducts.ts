@@ -205,7 +205,7 @@ const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
 
 export const searchProducts = tool({
   description:
-    '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 기본으로 무신사 입점 상품만 반환합니다.',
+    '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)를 함께 넣어 매칭률을 높이세요. 기본으로 무신사 입점 상품만 반환합니다.',
   inputSchema: searchProductsInputSchema,
   execute: async (input) => {
     const query = buildQuery(input)

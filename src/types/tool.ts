@@ -7,10 +7,22 @@ export const searchProductsInputSchema = z.object({
   keywords: z
     .array(z.string())
     .min(1)
-    .describe('검색 키워드 (예: ["청바지", "와이드"]). 카테고리나 스타일 단어 1개 이상 필수.'),
+    .describe(
+      '검색 키워드 2~4개, 최소 1개 필수. 같은 뜻의 다른 표기를 함께 넣어 매칭률을 높이세요 (청바지 → ["청바지", "데님"], 맨투맨 → ["맨투맨", "스웨트셔츠"], 운동화 → ["운동화", "스니커즈"], 후드 → ["후드", "후디"]). 사용자가 말한 핏·색상·소재도 키워드로 추가.',
+    ),
   brand: z.string().optional().describe('브랜드 (예: "무신사 스탠다드"). 사용자가 선호하면 지정.'),
-  priceMin: z.number().int().nonnegative().optional(),
-  priceMax: z.number().int().nonnegative().optional(),
+  priceMin: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .describe('최소 가격(원). 사용자 예산 하한이 있으면 지정.'),
+  priceMax: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .describe('최대 가격(원). 사용자 예산 상한이 있으면 지정.'),
   includeOtherMalls: z
     .boolean()
     .optional()
