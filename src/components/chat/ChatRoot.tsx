@@ -230,6 +230,8 @@ const ChatRoot = () => {
       setMessages([])
       setInput('')
       setImageFile(null)
+      setShowScrollDown(false)
+      isAtBottomRef.current = true
     }
     window.addEventListener('sosie:clear-chat', handler)
     return () => window.removeEventListener('sosie:clear-chat', handler)

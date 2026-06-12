@@ -1,5 +1,3 @@
-import Link from 'next/link'
-
 import ClearChatButton from '@/components/chat/ClearChatButton'
 import ModeToggle from '@/components/layout/ModeToggle'
 import FavoritesButton from '@/components/product/FavoritesButton'
@@ -9,9 +7,9 @@ const Header = () => {
   return (
     <header className="bg-background/80 sticky top-0 z-50 border-b backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+        <span className="cursor-default text-lg font-semibold tracking-tight select-none">
           Sosie
-        </Link>
+        </span>
         <div className="flex items-center gap-1">
           <FavoritesButton />
           <EditProfileButton />
