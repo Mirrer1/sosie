@@ -298,10 +298,19 @@ export const searchProducts = tool({
     '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)를 함께 넣어 매칭률을 높이세요. 기본으로 무신사 입점 상품만 반환합니다.',
   inputSchema: searchProductsInputSchema,
   execute: async (input) => {
+    // 변경 쿼리들을 동시에 호출, 일부 실패는 무시하고 전부 실패면 에러
+    const settled = await Promise.allSettled(buildQueryVariants(input).map(fetchNaverShop))
+    const responses = settled
+      .filter((r) => r.status === 'fulfilled')
+      .map((r) => (r as PromiseFulfilledResult<NaverShopResponse>).value)
+    if (responses.length === 0) {
+      throw (settled[0] as PromiseRejectedResult).reason
+    }
+
+    // 우선순위 순서로 병합·중복 제거, 풀 한도까지 수집
     const collected: MarketProduct[] = []
     const seen = new Set<string>()
-    for (const query of buildQueryVariants(input)) {
-      const response = await fetchNaverShop(query)
+    for (const response of responses) {
       const { products } = buildOutput(response, input)
       for (const product of products) {
         const key = normalize(product.name)
