@@ -2,7 +2,7 @@
 
 import { ExternalLinkIcon, RefreshCwIcon, TriangleAlertIcon } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -17,6 +17,7 @@ import { type ComparePricesOutput } from '@/types/tool'
 
 type ComparePricesDialogProps = {
   product: {
+    id: string
     name: string
     brand: string
     imageUrl: string
@@ -32,10 +33,20 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [retryNonce, setRetryNonce] = useState(0)
+  const cacheRef = useRef<Map<string, ComparePricesOutput['sources']>>(new Map())
 
-  // 다이얼로그 열릴 때마다 가격 비교 API 호출
+  // 다이얼로그 열릴 때 가격 비교 호출, 같은 상품은 캐시 재사용
   useEffect(() => {
     if (!product) return
+
+    const cached = cacheRef.current.get(product.id)
+    if (cached) {
+      setSources(cached)
+      setError(null)
+      setIsLoading(false)
+      return
+    }
+
     setSources(null)
     setError(null)
     setIsLoading(true)
@@ -54,6 +65,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
       })
       .then((data) => {
         setSources(data.sources)
+        cacheRef.current.set(product.id, data.sources)
       })
       .catch((e) => {
         if (e.name === 'AbortError') return
@@ -63,6 +75,12 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
 
     return () => ctrl.abort()
   }, [product, retryNonce])
+
+  // 캐시 비우고 다시 요청
+  const handleRetry = () => {
+    if (product) cacheRef.current.delete(product.id)
+    setRetryNonce((n) => n + 1)
+  }
 
   const sortedSources = sources ? [...sources].sort((a, b) => a.price - b.price) : null
   const lowestSource = sortedSources?.[0]
@@ -104,7 +122,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
                 <TriangleAlertIcon className="h-5 w-5" />
                 <span>{error}</span>
               </div>
-              <Button size="sm" variant="outline" onClick={() => setRetryNonce((n) => n + 1)}>
+              <Button size="sm" variant="outline" onClick={handleRetry}>
                 <RefreshCwIcon className="h-3.5 w-3.5" />
                 다시 시도
               </Button>
