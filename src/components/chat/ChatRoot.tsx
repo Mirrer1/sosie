@@ -16,12 +16,14 @@ import ChatWelcome from '@/components/chat/ChatWelcome'
 import ImageLightbox from '@/components/chat/ImageLightbox'
 import ToolStatus from '@/components/chat/ToolStatus'
 import TypingIndicator from '@/components/chat/TypingIndicator'
+import { useFavorites } from '@/components/product/FavoritesProvider'
 import ProductGrid from '@/components/product/ProductGrid'
 import OnboardingDialog from '@/components/profile/OnboardingDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { type Profile } from '@/types/profile'
 import { type SearchProductsOutput, type UpdateProfileOutput } from '@/types/tool'
+import { topFavoriteBrands } from '@/utils/favorites'
 import { validateImage } from '@/utils/image'
 import { hasProfile, loadProfile, saveProfile } from '@/utils/profile'
 
@@ -54,6 +56,7 @@ const stripFailedExchanges = (msgs: UIMessage[]): UIMessage[] => {
 // 채팅 페이지 루트
 const ChatRoot = () => {
   const { messages, sendMessage, setMessages, status, regenerate } = useChat()
+  const { favorites } = useFavorites()
   const [input, setInput] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -82,14 +85,18 @@ const ChatRoot = () => {
     setImageFile(file)
   }
 
+  // 매 요청에 프로필·찜 브랜드 첨부
+  const buildRequestOptions = () => ({
+    body: { profile, favoriteBrands: topFavoriteBrands(favorites) },
+  })
+
   // 입력 전송
   const handleSubmit = async () => {
     if ((!input.trim() && !imageFile) || isLoading) return
 
     isAtBottomRef.current = true
 
-    // 프로필 매 요청 body에 첨부
-    const options = profile ? { body: { profile } } : undefined
+    const options = buildRequestOptions()
 
     if (imageFile) {
       const dataUrl = await fileToDataUrl(imageFile)
@@ -119,15 +126,14 @@ const ChatRoot = () => {
   const handleExampleClick = (text: string) => {
     if (isLoading) return
     isAtBottomRef.current = true
-    const options = profile ? { body: { profile } } : undefined
-    sendMessage({ text }, options)
+    sendMessage({ text }, buildRequestOptions())
   }
 
   // 도구 실패 시 직전 응답을 다시 생성
   const handleRetry = () => {
     if (isLoading) return
     isAtBottomRef.current = true
-    regenerate(profile ? { body: { profile } } : undefined)
+    regenerate(buildRequestOptions())
   }
 
   // 최신 메시지로 스크롤

@@ -127,16 +127,26 @@ const formatProfile = (profile?: Profile | null): string => {
   return `\n\n## 사용자 프로필 (최신 기준 · 항상 우선)\n${lines.join('\n')}\n\n이 프로필이 항상 최신 기준입니다. 이전 대화에서 searchProducts를 다른 예산·브랜드·사이즈로 호출했더라도, 지금부터는 그 옛 인자를 무시하고 반드시 위 프로필 값으로 검색하세요.`
 }
 
+// 자주 찜한 브랜드를 시스템 프롬프트에 추가할 텍스트로 변환
+const formatFavoriteBrands = (brands?: string[]): string => {
+  if (!brands?.length) return ''
+  return `\n\n## 최근 자주 찜한 브랜드\n${brands.join(', ')}\n\n사용자가 실제로 저장한 브랜드입니다. 추천에 가볍게 참고하고 자연스럽게 한 줄로 언급해도 좋지만, 현재 요청 맥락과 프로필이 우선입니다.`
+}
+
 // Gemini Streaming 채팅 메시지 응답 (Tool Calling 지원)
 export const POST = async (req: Request) => {
-  const { messages, profile }: { messages: UIMessage[]; profile?: Profile | null } =
+  const {
+    messages,
+    profile,
+    favoriteBrands,
+  }: { messages: UIMessage[]; profile?: Profile | null; favoriteBrands?: string[] } =
     await req.json()
 
   const modelMessages = await convertToModelMessages(messages)
 
   const result = streamText({
     model: google('gemini-flash-lite-latest'),
-    system: BASE_SYSTEM_PROMPT + formatProfile(profile),
+    system: BASE_SYSTEM_PROMPT + formatProfile(profile) + formatFavoriteBrands(favoriteBrands),
     messages: modelMessages,
     temperature: 0.7,
     tools: {

@@ -167,7 +167,8 @@ export const runComparePrices = async (
   productName: string,
   brand?: string,
 ): Promise<ComparePricesOutput> => {
-  const query = cleanProductName(productName) || productName
+  const query =
+    [brand, cleanProductName(productName)].filter(Boolean).join(' ').trim() || productName
   const data = await fetchNaverShop(query)
   const mapped = mapNaverResponse(data, productName)
   return { sources: filterRelevantSources(mapped.sources, productName, brand) }

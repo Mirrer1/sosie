@@ -125,11 +125,23 @@ type NaverShopResponse = {
 // HTML 태그 제거
 const stripHtml = (str: string) => str.replace(/<[^>]*>/g, '')
 
+// 상품명 앞 대괄호에서 브랜드 추출
+const extractBrandFromTitle = (title: string): string | undefined => {
+  const matched = stripHtml(title).match(/^\s*\[([^\]]+)\]/)
+  return matched ? matched[1].trim() : undefined
+}
+
+// 상품명 앞 대괄호 제거, 브랜드는 따로 표시
+const stripLeadingBrand = (title: string): string => {
+  const cleaned = stripHtml(title)
+  return cleaned.replace(/^\s*\[[^\]]*\]\s*/, '').trim() || cleaned
+}
+
 // 네이버 응답 아이템을 MarketProduct로 매핑
 export const mapNaverItem = (item: NaverShopItem): MarketProduct => ({
   id: item.productId,
-  brand: item.brand?.trim() || item.mallName || '브랜드 미상',
-  name: stripHtml(item.title),
+  brand: item.brand?.trim() || extractBrandFromTitle(item.title) || item.mallName || '브랜드 미상',
+  name: stripLeadingBrand(item.title),
   price: parseInt(item.lprice, 10),
   imageUrl: item.image,
   productUrl: item.link,

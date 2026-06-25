@@ -100,6 +100,29 @@ describe('mapNaverItem', () => {
     expect(product.mall).toBe('무신사')
     expect(product.brand).toBe('무신사 스탠다드')
   })
+
+  it('brand가 비어있으면 상품명 대괄호에서 추출하고 이름에선 대괄호 제거', () => {
+    const product = mapNaverItem({
+      ...SAMPLE_ITEM,
+      brand: '',
+      title: '[<b>티와이</b>] 플레인 스트라이프 셔츠 24FW02BK',
+      mallName: '무신사',
+    })
+
+    expect(product.brand).toBe('티와이')
+    expect(product.name).toBe('플레인 스트라이프 셔츠 24FW02BK')
+  })
+
+  it('brand 없고 대괄호도 없으면 판매처명으로 폴백', () => {
+    const product = mapNaverItem({
+      ...SAMPLE_ITEM,
+      brand: '',
+      title: '플레인 스트라이프 셔츠',
+      mallName: '무신사',
+    })
+
+    expect(product.brand).toBe('무신사')
+  })
 })
 
 describe('buildOutput', () => {
