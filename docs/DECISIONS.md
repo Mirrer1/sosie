@@ -288,6 +288,10 @@
 - 프로필 차원 확장 — 신체 사이즈 디테일, 색상 선호, 핏 선호, TPO 등
 - implicit 학습 (클릭/찜 이력 기반)
 
+**업데이트 — 반영 전 확인 단계 추가**:
+
+자동 즉시 반영이 "내가 모르게 프로필이 바뀐다"는 불안을 줘서, `updateProfile` 결과를 바로 적용하지 않고 컴포저 위 확인 카드(`ProfileUpdatePrompt`)로 사용자가 [반영]/[나중에]를 고르게 변경. AI 답변도 "반영했어요" 단정 대신 "반영해둘까요?" 제안 톤. 과거 대화 복원 시엔 카드 미표시(이미 처리된 것으로 시드), updateProfile의 ToolStatus는 숨김(확인 카드와 중복·모순 방지). 구현: `ChatRoot`의 pending 큐 + `ProfileUpdatePrompt`.
+
 ---
 
 ## ADR-010: 브랜드명 "Sosie" 의미 재해석 — 닮은 옷 → 내 취향을 닮은 옷
@@ -365,6 +369,10 @@
 - 무신사 파트너 API 도입 시 → 직접 mall URL 응답 → 검색 우회 불필요
 - 모달 UX 강화 — 정렬 옵션, 가격 변동 알림, 무료배송/적립 메타 표시 (네이버 API에 메타 없음)
 
+**업데이트 — 모달 UX 강화**:
+
+판매처마다 다른 이미지/제목이 같은 상품을 다르게 보이게 해서, 상단에 클릭한 카드의 대표 이미지·브랜드·이름을 한 번만 보여주고 판매처 행은 "판매처 · 가격 · 최저가 대비 차액 · 구매"로 단순화. 하단은 "원본으로 이동" 대신 "최저가 N원 보러 가기" CTA(가장 싼 판매처 직접 이동)로 교체. 로딩은 스켈레톤 행, 결과는 위에서부터 순차 등장 애니메이션, 실패 시 "다시 시도" 버튼, 같은 상품 재클릭은 캐시 재사용(`id` 기준). 판매처 로고는 자동 판별 정확도 한계(스마트스토어 셀러가 네이버로 오인됨)로 제외.
+
 ---
 
 ## ADR-012: 가격 비교 동일 상품 정확도 — 검색어 정제 + 모델코드/브랜드 필터
@@ -388,6 +396,10 @@
 **조절 손잡이**: `RELEVANCE_RATIO`(0.5), `MIN_TOKEN_MATCH`(2) — `comparePrices.ts` 상단 상수
 
 **구현 위치**: `src/lib/tools/comparePrices.ts` (`cleanProductName`/`extractModelCodes`/`filterRelevantSources`) + 테스트 `comparePrices.test.ts`
+
+**업데이트 — 브랜드 인자 + 구별 단어 기준**:
+
+카드의 brand를 가격비교에 직접 전달(`runComparePrices(productName, brand)`)해 다른 브랜드 결과를 제외. 토큰 겹침 기준도 "브랜드를 뺀 구별 단어" 기준으로 바꿔, 같은 브랜드라도 흔한 단어(버튼다운/남방)만 겹치고 핵심 단어(아쿠아/스몰체크)가 안 맞는 다른 모델을 걸러냄. 단 명시적으로 요청한 브랜드는 그대로 통과(`GENERIC_BRAND_KEYS` 제외 로직). 브랜드는 상품명 앞 `[브랜드]`에서 추출하므로 정확도가 함께 올라감.
 
 ---
 
@@ -413,6 +425,10 @@
 - ❌ 찜 데이터를 아직 추천 개인화에 활용하진 않음 (implicit 학습은 백로그)
 
 **구현 위치**: `src/components/product/` (`FavoritesProvider`/`ProductFavoriteButton`/`FavoritesButton`/`FavoritesDialog`) + `src/utils/favorites.ts` + `src/app/layout.tsx`(Provider 마운트)
+
+**업데이트 — 찜 기반 개인화 구현**:
+
+백로그였던 "찜을 추천에 활용"을 구현. 자주 찜한 브랜드 top N(`topFavoriteBrands`, 빈도순·"무신사"/"브랜드 미상" 제외)을 두 군데에 반영: (1) 시스템 프롬프트에 주입해 AI가 참고·언급, (2) `searchProducts`에 요청별 주입(`createSearchProducts(favoriteBrands)`)해 그 브랜드를 검색어에 추가 + 점수 가산(`FAVORITE_BRAND_SCORE`). 한 브랜드 독점을 막으려 결과 브랜드당 최대 2개(`MAX_PER_BRAND`)로 제한, 다양성이 부족하면 한도 무시하고 채움. 상품명 `[브랜드]` 추출 덕에 찜 신호가 mallName "무신사"가 아닌 실제 브랜드로 잡힘.
 
 ---
 
@@ -442,3 +458,11 @@
 **조절 손잡이**: `RETURN_COUNT`(6) / `POOL_COUNT`(18) / `DISPLAY_COUNT`(100) / `KEYWORD_SYNONYMS` — `searchProducts.ts` 상단 상수
 
 **구현 위치**: `src/lib/tools/searchProducts.ts` + 테스트 `searchProducts.test.ts`
+
+**업데이트 — 추가 개선**:
+
+1. **프로필 styles 반영** — 스타일을 상품명에 실제 등장하는 특징 단어로 매핑(`STYLE_KEYWORDS`, 스트릿→와이드/오버핏 등)해 검색어에 대표 단어 1개 첨부 + 점수 가산(`STYLE_SCORE`), 스타일 맞는 상품을 먼저 채움. 스타일 단어 자체는 상품명에 잘 안 나와서 "특징 단어로 번역"이 핵심.
+2. **동의어 맵 확장** — 코트/패딩/셔츠·남방/원피스/슬랙스/조거 등 25개로 확장(짧아서 오매칭 위험 있는 가방·모자·신발은 제외).
+3. **네이버 호출 병렬화** — 변경 쿼리들을 순차→`Promise.allSettled` 동시 호출로 지연 감소, 일부 실패는 무시하고 전부 실패만 에러. 모든 응답을 합쳐 점수·중복 제거 후 상위 풀 구성.
+4. **브랜드 추출·이름 정리** — 상품명 앞 `[브랜드]`에서 브랜드를 뽑아 카드에 표시(네이버 brand 필드가 비면 mallName "무신사"로 잘못 찍히던 문제 해결), 표시 이름에선 대괄호 제거.
+5. **찜 브랜드 반영 + 다양성** — 찜 브랜드 가산점 + 브랜드당 개수 제한(상세 ADR-013 업데이트).
