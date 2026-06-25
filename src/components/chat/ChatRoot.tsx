@@ -204,6 +204,11 @@ const ChatRoot = () => {
     setIsHydrated(true)
   }, [setMessages])
 
+  // AI 응답 중 상태를 헤더 버튼에 전파
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('sosie:chat-busy', { detail: isLoading }))
+  }, [isLoading])
+
   // 헤더의 프로필 수정 버튼에서 발생하는 이벤트 수신
   useEffect(() => {
     const handler = () => setShowOnboarding(true)

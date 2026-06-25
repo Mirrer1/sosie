@@ -15,10 +15,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import useChatBusy from '@/hooks/useChatBusy'
 
 // 대화 내역 초기화
 const ClearChatButton = () => {
   const [open, setOpen] = useState(false)
+  const busy = useChatBusy()
 
   // 확인 시 ChatRoot로 이벤트 전달 후 모달 닫기
   const handleConfirm = () => {
@@ -33,7 +35,7 @@ const ClearChatButton = () => {
           render={
             <DialogTrigger
               render={
-                <Button variant="ghost" size="icon" aria-label="대화 지우기">
+                <Button variant="ghost" size="icon" aria-label="대화 지우기" disabled={busy}>
                   <EraserIcon className="h-[1.2rem] w-[1.2rem]" />
                 </Button>
               }
