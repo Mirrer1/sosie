@@ -18,7 +18,7 @@ const PRICE_BONUS = 2
 const FASHION_CATEGORY = '패션'
 const NOISE_KEYWORDS = ['중고', '리퍼', '렌탈', '대여', '도매', '사은품']
 
-// 대화 프롬프트 상품명 단어로 매핑
+// 사용자가 말한 단어를 상품명 표기로 매핑
 const KEYWORD_SYNONYMS: Record<string, string[]> = {
   청바지: ['데님'],
   맨투맨: ['스웨트셔츠', '스웨트'],
@@ -60,7 +60,7 @@ export const styleHints = (styles?: string[]): string[] => {
   return [...result]
 }
 
-// 상품이 선호 스타일의 특징 단어를 하나라도 가지면 true
+// 상품이 선호 스타일의 특징 단어를 하나라도 가지는지 여부
 export const matchesStyle = (
   product: { name: string; brand: string },
   styles?: string[],
@@ -176,7 +176,7 @@ const matchesPrice = (product: MarketProduct, priceMin?: number, priceMax?: numb
   return true
 }
 
-// 검색 키워드에 같은말을 더해 매칭 폭을 넓힘
+// 검색 키워드에 같은 말을 더해 매칭 폭을 넓힘
 export const expandKeywords = (keywords: string[]): string[] => {
   const result = new Set<string>()
   for (const keyword of keywords) {
