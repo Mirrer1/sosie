@@ -70,13 +70,9 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
     }
   }
 
-  // 다음 또는 저장
+  // 다음 단계
   const handleNext = () => {
-    if (step < TOTAL_STEPS) {
-      setStep(step + 1)
-      return
-    }
-    onSave({ styles, brands, size, budget })
+    if (step < TOTAL_STEPS) setStep(step + 1)
   }
 
   // 이전 단계
@@ -84,12 +80,16 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
     if (step > 1) setStep(step - 1)
   }
 
+  // 현재까지 고른 값으로 즉시 저장
+  const handleSave = () => {
+    onSave({ styles, brands, size, budget })
+  }
+
   // 이번 단계 값 비우고 다음
   const handleSkip = () => {
     if (step === 1) setStyles([])
     if (step === 2) setBrands([])
     if (step === 3) setSize(undefined)
-    if (step === 4) setBudget(undefined)
     handleNext()
   }
 
@@ -104,7 +104,7 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
             {step === 4 && '옷에 보통 얼마 쓰세요?'}
           </DialogTitle>
           <DialogDescription>
-            {step}/{TOTAL_STEPS} · 다 선택 사항이에요. 나중에 헤더에서 수정할 수 있어요.
+            {step}/{TOTAL_STEPS} · 다 선택 사항이에요. 원하는 것만 고르고 바로 저장해도 돼요.
           </DialogDescription>
         </DialogHeader>
 
@@ -223,17 +223,26 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
         </div>
 
         <DialogFooter className="flex-row justify-between sm:justify-between">
-          <Button type="button" variant="ghost" onClick={handleSkip}>
-            건너뛰기
-          </Button>
+          {step < TOTAL_STEPS ? (
+            <Button type="button" variant="ghost" onClick={handleSkip}>
+              건너뛰기
+            </Button>
+          ) : (
+            <span />
+          )}
           <div className="flex gap-2">
             {step > 1 && (
               <Button type="button" variant="outline" onClick={handlePrev}>
                 이전
               </Button>
             )}
-            <Button type="button" onClick={handleNext}>
-              {step === TOTAL_STEPS ? '저장' : '다음'}
+            {step < TOTAL_STEPS && (
+              <Button type="button" variant="outline" onClick={handleNext}>
+                다음
+              </Button>
+            )}
+            <Button type="button" onClick={handleSave}>
+              저장
             </Button>
           </div>
         </DialogFooter>
