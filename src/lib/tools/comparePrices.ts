@@ -6,6 +6,7 @@ const NAVER_SHOP_API_URL = 'https://openapi.naver.com/v1/search/shop.json'
 const DISPLAY_COUNT = 10
 const RELEVANCE_RATIO = 0.5
 const MIN_TOKEN_MATCH = 2
+const GENERIC_BRAND_KEYS = ['브랜드미상', '판매처미상', '무신사', '알수없음']
 
 type NaverShopItem = {
   title: string
@@ -59,23 +60,32 @@ const tokenize = (name: string): string[] =>
     .split(/\s+/)
     .filter((token) => token.length >= 2)
 
-// 브랜드 일치 + 모델코드 충돌 제외 + 토큰 겹침으로 판매처를 거름, 전부 걸러지면 원본 유지
+// 브랜드 불일치 + 모델코드 충돌 + 구별 단어 부족으로 판매처를 거름, 전부 걸러지면 원본 유지
 export const filterRelevantSources = (
   sources: ComparePricesOutput['sources'],
   productName: string,
+  brand?: string,
 ): ComparePricesOutput['sources'] => {
   const tokens = tokenize(productName)
   if (tokens.length === 0) return sources
 
-  const brandKey = tokens[0]
+  const brandTokens = brand ? tokenize(brand) : tokens.slice(0, 1)
+  const brandKey = brandTokens.join('').replace(/\s/g, '')
+  const enforceBrand = brandKey.length >= 2 && !GENERIC_BRAND_KEYS.includes(brandKey)
+
+  // 브랜드 빼고 상품을 구별하는 단어들
+  const descriptive = tokens.filter((token) => !brandTokens.includes(token))
+  const threshold = Math.min(
+    descriptive.length,
+    Math.max(MIN_TOKEN_MATCH, Math.ceil(descriptive.length * RELEVANCE_RATIO)),
+  )
   const originalCodes = extractModelCodes(productName)
-  const threshold = Math.max(MIN_TOKEN_MATCH, Math.ceil(tokens.length * RELEVANCE_RATIO))
 
   const relevant = sources.filter((source) => {
     const cleaned = cleanProductName(source.title ?? '').toLowerCase()
 
-    // 브랜드명이 제목에 없으면 제외
-    if (!cleaned.replace(/\s/g, '').includes(brandKey)) return false
+    // 브랜드가 제목에 없으면 제외
+    if (enforceBrand && !cleaned.replace(/\s/g, '').includes(brandKey)) return false
 
     // 결과에 모델코드가 있는데 원본 코드와 다르면 제외
     if (originalCodes.length > 0) {
@@ -83,7 +93,8 @@ export const filterRelevantSources = (
       if (codes.length > 0 && !codes.some((code) => originalCodes.includes(code))) return false
     }
 
-    const matched = tokens.filter((token) => cleaned.includes(token)).length
+    // 브랜드 뺀 구별 단어가 기준 이상 겹쳐야 통과
+    const matched = descriptive.filter((token) => cleaned.includes(token)).length
     return matched >= threshold
   })
 
@@ -152,16 +163,19 @@ const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
 }
 
 // 상품명으로 판매처별 가격 비교, Tool과 카드 모달 양쪽에서 재사용
-export const runComparePrices = async (productName: string): Promise<ComparePricesOutput> => {
+export const runComparePrices = async (
+  productName: string,
+  brand?: string,
+): Promise<ComparePricesOutput> => {
   const query = cleanProductName(productName) || productName
   const data = await fetchNaverShop(query)
   const mapped = mapNaverResponse(data, productName)
-  return { sources: filterRelevantSources(mapped.sources, productName) }
+  return { sources: filterRelevantSources(mapped.sources, productName, brand) }
 }
 
 export const comparePrices = tool({
   description:
     '같은 상품을 여러 판매처에서 가격 비교합니다. 사용자가 가격, 어디서 사는 게 싼지, 판매처 비교를 물을 때 호출하세요.',
   inputSchema: comparePricesInputSchema,
-  execute: async ({ productName }) => runComparePrices(productName),
+  execute: async ({ productName, brand }) => runComparePrices(productName, brand),
 })

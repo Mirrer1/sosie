@@ -138,6 +138,43 @@ describe('filterRelevantSources', () => {
     expect(result).toHaveLength(1)
     expect(result[0].seller).toBe('C')
   })
+
+  it('같은 브랜드라도 구별 단어가 부족한 다른 모델은 제외', () => {
+    const product = '[더셔츠스튜디오] 아쿠아 블루 스몰체크 버튼다운 남방 TSS143'
+    const sources = [
+      {
+        seller: '네이버',
+        price: 18970,
+        url: 'https://n.com',
+        title: '더셔츠스튜디오 남자 루즈핏 면 체크 버튼다운 캐주얼 셔츠 남방',
+      },
+      {
+        seller: '29CM',
+        price: 21800,
+        url: 'https://29.com',
+        title: '[더셔츠스튜디오] 아쿠아블루 스몰체크 버튼다운 남방',
+      },
+      {
+        seller: '네이버',
+        price: 21800,
+        url: 'https://n2.com',
+        title: '더셔츠스튜디오 스몰체크 버튼다운 남방',
+      },
+    ]
+    const result = filterRelevantSources(sources, product, '더셔츠스튜디오')
+
+    expect(result.map((s) => s.seller)).toEqual(['29CM', '네이버'])
+  })
+
+  it('다른 브랜드는 brand 인자로 제외', () => {
+    const sources = [
+      { seller: 'A', price: 100, url: 'https://a.com', title: '노이어 발마칸 코트' },
+      { seller: 'B', price: 90, url: 'https://b.com', title: '커버낫 발마칸 코트' },
+    ]
+    const result = filterRelevantSources(sources, '노이어 발마칸 코트', '노이어')
+
+    expect(result.map((s) => s.seller)).toEqual(['A'])
+  })
 })
 
 describe('extractModelCodes', () => {

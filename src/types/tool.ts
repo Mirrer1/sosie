@@ -48,6 +48,12 @@ export type SearchProductsOutput = z.infer<typeof searchProductsOutputSchema>
 // comparePrices Tool 입력
 export const comparePricesInputSchema = z.object({
   productName: z.string().describe('상품명 (예: "유니폼브릿지 발마칸 싱글 코트")'),
+  brand: z
+    .string()
+    .optional()
+    .describe(
+      '상품 브랜드 (예: "유니폼브릿지"). 알면 넣으세요. 다른 브랜드 결과를 걸러 정확도를 높입니다.',
+    ),
 })
 
 // comparePrices Tool 출력
