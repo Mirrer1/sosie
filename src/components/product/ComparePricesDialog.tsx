@@ -1,6 +1,6 @@
 'use client'
 
-import { ExternalLinkIcon, TriangleAlertIcon } from 'lucide-react'
+import { ExternalLinkIcon, RefreshCwIcon, TriangleAlertIcon } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
@@ -31,6 +31,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
   const [sources, setSources] = useState<ComparePricesOutput['sources'] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [retryNonce, setRetryNonce] = useState(0)
 
   // 다이얼로그 열릴 때마다 가격 비교 API 호출
   useEffect(() => {
@@ -61,7 +62,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
       .finally(() => setIsLoading(false))
 
     return () => ctrl.abort()
-  }, [product])
+  }, [product, retryNonce])
 
   const sortedSources = sources ? [...sources].sort((a, b) => a.price - b.price) : null
   const lowestSource = sortedSources?.[0]
@@ -98,9 +99,15 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
             ))}
 
           {error && !isLoading && (
-            <div className="text-destructive flex flex-col items-center gap-2 py-8 text-sm">
-              <TriangleAlertIcon className="h-5 w-5" />
-              <span>{error}</span>
+            <div className="text-muted-foreground flex flex-col items-center gap-3 py-8 text-sm">
+              <div className="text-destructive flex items-center gap-2">
+                <TriangleAlertIcon className="h-5 w-5" />
+                <span>{error}</span>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setRetryNonce((n) => n + 1)}>
+                <RefreshCwIcon className="h-3.5 w-3.5" />
+                다시 시도
+              </Button>
             </div>
           )}
 
