@@ -19,6 +19,7 @@ import TypingIndicator from '@/components/chat/TypingIndicator'
 import { useFavorites } from '@/components/product/FavoritesProvider'
 import ProductGrid from '@/components/product/ProductGrid'
 import OnboardingDialog from '@/components/profile/OnboardingDialog'
+import ProfileUpdatePrompt from '@/components/profile/ProfileUpdatePrompt'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { type Profile } from '@/types/profile'
@@ -37,6 +38,26 @@ const fileToDataUrl = (file: File): Promise<string> => {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+// updateProfile 결과를 기존 프로필에 병합
+const mergeProfile = (base: Profile | null, output: UpdateProfileOutput): Profile => {
+  const { updated, mode } = output
+  const next: Profile = { ...(base ?? {}) }
+  if (mode === 'replace') {
+    if (updated.styles !== undefined) next.styles = updated.styles
+    if (updated.brands !== undefined) next.brands = updated.brands
+    if (updated.size !== undefined) next.size = updated.size
+    if (updated.budget !== undefined) next.budget = updated.budget
+  } else {
+    if (updated.styles)
+      next.styles = Array.from(new Set([...(next.styles ?? []), ...updated.styles]))
+    if (updated.brands)
+      next.brands = Array.from(new Set([...(next.brands ?? []), ...updated.brands]))
+    if (updated.size !== undefined) next.size = updated.size
+    if (updated.budget) next.budget = updated.budget
+  }
+  return next
 }
 
 // 도구 실패 시 교환 응답 제거
@@ -64,6 +85,9 @@ const ChatRoot = () => {
   const [isHydrated, setIsHydrated] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [pendingProfileUpdates, setPendingProfileUpdates] = useState<
+    { key: string; output: UpdateProfileOutput }[]
+  >([])
   const [showScrollDown, setShowScrollDown] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -200,6 +224,13 @@ const ChatRoot = () => {
         const cleaned = stripFailedExchanges(parsed)
         if (Array.isArray(parsed) && cleaned.length > 0) {
           setMessages(cleaned)
+          for (const msg of cleaned) {
+            for (const part of msg.parts) {
+              if (part.type === 'tool-updateProfile' && 'toolCallId' in part) {
+                appliedProfileUpdates.current.add(part.toolCallId as string)
+              }
+            }
+          }
         }
       }
     } catch {
@@ -242,13 +273,14 @@ const ChatRoot = () => {
       setInput('')
       setImageFile(null)
       setShowScrollDown(false)
+      setPendingProfileUpdates([])
       isAtBottomRef.current = true
     }
     window.addEventListener('sosie:clear-chat', handler)
     return () => window.removeEventListener('sosie:clear-chat', handler)
   }, [setMessages])
 
-  // updateProfile Tool 결과 감지
+  // updateProfile Tool 결과 감지, 즉시 반영 대신 확인 대기열에 추가
   useEffect(() => {
     for (const msg of messages) {
       if (msg.role !== 'assistant') continue
@@ -263,31 +295,29 @@ const ChatRoot = () => {
         }
         const key = 'toolCallId' in part ? (part.toolCallId as string) : ''
         if (!key || appliedProfileUpdates.current.has(key)) continue
-
-        const { updated, mode } = part.output as UpdateProfileOutput
-        setProfile((prev) => {
-          const base: Profile = prev ?? {}
-          const next: Profile = { ...base }
-          if (mode === 'replace') {
-            if (updated.styles !== undefined) next.styles = updated.styles
-            if (updated.brands !== undefined) next.brands = updated.brands
-            if (updated.size !== undefined) next.size = updated.size
-            if (updated.budget !== undefined) next.budget = updated.budget
-          } else {
-            if (updated.styles)
-              next.styles = Array.from(new Set([...(base.styles ?? []), ...updated.styles]))
-            if (updated.brands)
-              next.brands = Array.from(new Set([...(base.brands ?? []), ...updated.brands]))
-            if (updated.size !== undefined) next.size = updated.size
-            if (updated.budget) next.budget = updated.budget
-          }
-          saveProfile(next)
-          return next
-        })
         appliedProfileUpdates.current.add(key)
+        setPendingProfileUpdates((prev) => [
+          ...prev,
+          { key, output: part.output as UpdateProfileOutput },
+        ])
       }
     }
   }, [messages])
+
+  // 확인 카드에서 반영 선택
+  const handleApplyProfileUpdate = (key: string, output: UpdateProfileOutput) => {
+    setProfile((prev) => {
+      const next = mergeProfile(prev, output)
+      saveProfile(next)
+      return next
+    })
+    setPendingProfileUpdates((prev) => prev.filter((p) => p.key !== key))
+  }
+
+  // 확인 카드에서 나중에 선택
+  const handleDismissProfileUpdate = (key: string) => {
+    setPendingProfileUpdates((prev) => prev.filter((p) => p.key !== key))
+  }
 
   // 메시지 변경 시 실패 교환을 제외하고 localStorage에 자동 저장
   useEffect(() => {
@@ -413,7 +443,12 @@ const ChatRoot = () => {
                       return <ChatToolError key={idx} onRetry={handleRetry} disabled={isLoading} />
                     }
 
-                    if (part.type.startsWith('tool-') && 'state' in part && part.state) {
+                    if (
+                      part.type.startsWith('tool-') &&
+                      part.type !== 'tool-updateProfile' &&
+                      'state' in part &&
+                      part.state
+                    ) {
                       return <ToolStatus key={idx} toolType={part.type} state={part.state} />
                     }
                     return null
@@ -460,6 +495,16 @@ const ChatRoot = () => {
           </motion.button>
         )}
       </AnimatePresence>
+
+      {pendingProfileUpdates.length > 0 && (
+        <ProfileUpdatePrompt
+          output={pendingProfileUpdates[0].output}
+          onApply={() =>
+            handleApplyProfileUpdate(pendingProfileUpdates[0].key, pendingProfileUpdates[0].output)
+          }
+          onDismiss={() => handleDismissProfileUpdate(pendingProfileUpdates[0].key)}
+        />
+      )}
 
       <ChatComposer
         value={input}
