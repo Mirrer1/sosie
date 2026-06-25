@@ -22,6 +22,12 @@ const ClearChatButton = () => {
   const [open, setOpen] = useState(false)
   const busy = useChatBusy()
 
+  // 응답 중 모달 열림 차단
+  const handleOpenChange = (next: boolean) => {
+    if (next && busy) return
+    setOpen(next)
+  }
+
   // 확인 시 ChatRoot로 이벤트 전달 후 모달 닫기
   const handleConfirm = () => {
     window.dispatchEvent(new CustomEvent('sosie:clear-chat'))
@@ -29,13 +35,13 @@ const ClearChatButton = () => {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <Tooltip>
         <TooltipTrigger
           render={
             <DialogTrigger
               render={
-                <Button variant="ghost" size="icon" aria-label="대화 지우기" disabled={busy}>
+                <Button variant="ghost" size="icon" aria-label="대화 지우기">
                   <EraserIcon className="h-[1.2rem] w-[1.2rem]" />
                 </Button>
               }

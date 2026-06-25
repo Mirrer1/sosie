@@ -256,7 +256,12 @@ describe('expandKeywords', () => {
   })
 
   it('같은말 없으면 원본만 유지', () => {
-    expect(expandKeywords(['셔츠'])).toEqual(['셔츠'])
+    expect(expandKeywords(['코트'])).toEqual(['코트'])
+  })
+
+  it('확장된 카테고리도 같은말 매핑', () => {
+    expect(expandKeywords(['남방'])).toContain('셔츠')
+    expect(expandKeywords(['패딩'])).toContain('다운')
   })
 })
 

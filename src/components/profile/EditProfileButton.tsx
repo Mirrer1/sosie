@@ -10,7 +10,9 @@ import useChatBusy from '@/hooks/useChatBusy'
 const EditProfileButton = () => {
   const busy = useChatBusy()
 
+  // 응답 중 클릭 무시
   const handleClick = () => {
+    if (busy) return
     window.dispatchEvent(new CustomEvent('sosie:open-profile'))
   }
 
@@ -18,13 +20,7 @@ const EditProfileButton = () => {
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="프로필 수정"
-            onClick={handleClick}
-            disabled={busy}
-          >
+          <Button variant="ghost" size="icon" aria-label="프로필 수정" onClick={handleClick}>
             <UserCogIcon className="h-[1.2rem] w-[1.2rem]" />
           </Button>
         }
