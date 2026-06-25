@@ -313,6 +313,15 @@ describe('scoreProduct', () => {
     expect(high).toBeGreaterThan(low)
   })
 
+  it('자주 찜한 브랜드면 가산점', () => {
+    const product = mapNaverItem({ ...SAMPLE_ITEM, title: '와이드 데님 팬츠', brand: '커버낫' })
+
+    const withFav = scoreProduct(product, { keywords: ['청바지', '데님'] }, ['커버낫'])
+    const withoutFav = scoreProduct(product, { keywords: ['청바지', '데님'] })
+
+    expect(withFav).toBeGreaterThan(withoutFav)
+  })
+
   it('스타일 특징 단어가 맞으면 가산점, 없으면 기존 점수 유지', () => {
     const product = mapNaverItem({ ...SAMPLE_ITEM, title: '스트레이트 데님 팬츠', brand: '무신사' })
 

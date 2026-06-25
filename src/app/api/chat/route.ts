@@ -3,7 +3,7 @@ import { type UIMessage, convertToModelMessages, stepCountIs, streamText } from 
 
 import { comparePrices } from '@/lib/tools/comparePrices'
 import { parseProductUrl } from '@/lib/tools/parseProductUrl'
-import { searchProducts } from '@/lib/tools/searchProducts'
+import { createSearchProducts } from '@/lib/tools/searchProducts'
 import { updateProfile } from '@/lib/tools/updateProfile'
 import { type Profile } from '@/types/profile'
 
@@ -150,7 +150,7 @@ export const POST = async (req: Request) => {
     messages: modelMessages,
     temperature: 0.7,
     tools: {
-      searchProducts,
+      searchProducts: createSearchProducts(favoriteBrands),
       comparePrices,
       parseProductUrl,
       updateProfile,

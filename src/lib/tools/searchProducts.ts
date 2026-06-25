@@ -14,7 +14,9 @@ const POOL_COUNT = 18
 const KEYWORD_SCORE = 3
 const BRAND_SCORE = 4
 const STYLE_SCORE = 2
+const FAVORITE_BRAND_SCORE = 3
 const PRICE_BONUS = 2
+const MAX_PER_BRAND = 2
 const FASHION_CATEGORY = '패션'
 const NOISE_KEYWORDS = ['중고', '리퍼', '렌탈', '대여', '도매', '사은품']
 
@@ -84,23 +86,17 @@ export const matchesStyle = (
   return hints.some((hint) => haystack.includes(normalize(hint)))
 }
 
-// 앞쪽(상위)일수록 높은 가중치로 count개를 비복원 추출
-const weightedSample = <T>(items: T[], count: number): T[] => {
-  const pool = [...items]
-  const picked: T[] = []
-  while (picked.length < count && pool.length > 0) {
-    const total = (pool.length * (pool.length + 1)) / 2
-    let r = Math.random() * total
-    let index = 0
-    for (; index < pool.length - 1; index++) {
-      const weight = pool.length - index
-      if (r < weight) break
-      r -= weight
-    }
-    picked.push(pool[index])
-    pool.splice(index, 1)
+// 앞쪽(상위)일수록 높은 가중치로 인덱스 하나 추출
+const weightedPickIndex = (length: number): number => {
+  const total = (length * (length + 1)) / 2
+  let r = Math.random() * total
+  let index = 0
+  for (; index < length - 1; index++) {
+    const weight = length - index
+    if (r < weight) break
+    r -= weight
   }
-  return picked
+  return index
 }
 
 type NaverShopItem = {
@@ -232,7 +228,11 @@ export const dedupeByName = (products: MarketProduct[]): MarketProduct[] => {
 }
 
 // 입력 적합도 점수, 키워드·브랜드 일치와 예산 근접도를 합산
-export const scoreProduct = (product: MarketProduct, input: SearchProductsInput): number => {
+export const scoreProduct = (
+  product: MarketProduct,
+  input: SearchProductsInput,
+  favoriteBrands?: string[],
+): number => {
   const haystack = normalize(`${product.name} ${product.brand}`)
   let score = 0
   for (const keyword of input.keywords) {
@@ -240,6 +240,9 @@ export const scoreProduct = (product: MarketProduct, input: SearchProductsInput)
   }
   if (input.brand && haystack.includes(normalize(input.brand))) score += BRAND_SCORE
   if (matchesStyle(product, input.styles)) score += STYLE_SCORE
+  if (favoriteBrands?.some((brand) => haystack.includes(normalize(brand)))) {
+    score += FAVORITE_BRAND_SCORE
+  }
   if (input.priceMin !== undefined && input.priceMax !== undefined) {
     const center = (input.priceMin + input.priceMax) / 2
     const half = (input.priceMax - input.priceMin) / 2
@@ -255,6 +258,7 @@ export const scoreProduct = (product: MarketProduct, input: SearchProductsInput)
 export const buildOutput = (
   response: NaverShopResponse,
   input: SearchProductsInput,
+  favoriteBrands?: string[],
 ): SearchProductsOutput => {
   const candidates = response.items
     .filter((item) => (input.includeOtherMalls ? true : isMusinsa(item)))
@@ -269,7 +273,7 @@ export const buildOutput = (
   const pool = matched.length > 0 ? matched : candidates
 
   const products = dedupeByName(pool)
-    .map((product) => ({ product, score: scoreProduct(product, expanded) }))
+    .map((product) => ({ product, score: scoreProduct(product, expanded, favoriteBrands) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, POOL_COUNT)
     .map((entry) => entry.product)
@@ -305,40 +309,66 @@ const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
   return res.json()
 }
 
-export const searchProducts = tool({
-  description:
-    '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)를 함께 넣어 매칭률을 높이세요. 기본으로 무신사 입점 상품만 반환합니다.',
-  inputSchema: searchProductsInputSchema,
-  execute: async (input) => {
-    // 변경 쿼리들을 동시에 호출, 일부 실패는 무시하고 전부 실패면 에러
-    const settled = await Promise.allSettled(buildQueryVariants(input).map(fetchNaverShop))
-    const responses = settled
-      .filter((r) => r.status === 'fulfilled')
-      .map((r) => (r as PromiseFulfilledResult<NaverShopResponse>).value)
-    if (responses.length === 0) {
-      throw (settled[0] as PromiseRejectedResult).reason
-    }
-
-    // 우선순위 순서로 병합·중복 제거, 풀 한도까지 수집
-    const collected: MarketProduct[] = []
-    const seen = new Set<string>()
-    for (const response of responses) {
-      const { products } = buildOutput(response, input)
-      for (const product of products) {
-        const key = normalize(product.name)
-        if (seen.has(key)) continue
-        seen.add(key)
-        collected.push(product)
+// 자주 찜한 브랜드를 랭킹에 반영하는 searchProducts 인스턴스 생성
+export const createSearchProducts = (favoriteBrands?: string[]) =>
+  tool({
+    description:
+      '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)를 함께 넣어 매칭률을 높이세요. 기본으로 무신사 입점 상품만 반환합니다.',
+    inputSchema: searchProductsInputSchema,
+    execute: async (input) => {
+      // 기본 변경 쿼리 + 찜 브랜드별 쿼리를 모아 동시 호출, 전부 실패면 에러
+      const brandQueries = (favoriteBrands ?? []).map((brand) =>
+        buildQuery({ keywords: input.keywords, brand, includeOtherMalls: input.includeOtherMalls }),
+      )
+      const queries = [...new Set([...buildQueryVariants(input), ...brandQueries])]
+      const settled = await Promise.allSettled(queries.map(fetchNaverShop))
+      const responses = settled
+        .filter((r) => r.status === 'fulfilled')
+        .map((r) => (r as PromiseFulfilledResult<NaverShopResponse>).value)
+      if (responses.length === 0) {
+        throw (settled[0] as PromiseRejectedResult).reason
       }
-      if (collected.length >= POOL_COUNT) break
-    }
-    // 스타일 맞는 상품을 먼저 채우고, 모자라면 나머지로 메꿈 (빈 결과 방지)
-    const onStyle = collected.filter((p) => matchesStyle(p, input.styles))
-    const offStyle = collected.filter((p) => !matchesStyle(p, input.styles))
-    const picked = weightedSample(onStyle, RETURN_COUNT)
-    if (picked.length < RETURN_COUNT) {
-      picked.push(...weightedSample(offStyle, RETURN_COUNT - picked.length))
-    }
-    return { products: picked }
-  },
-})
+
+      // 모든 응답을 합쳐 점수·중복 제거 후 상위 풀 구성
+      const merged = responses.flatMap((r) => r.items)
+      const { products } = buildOutput(
+        { total: 0, display: 0, items: merged },
+        input,
+        favoriteBrands,
+      )
+
+      // 스타일 맞는 상품 우선, 한 브랜드가 결과를 독점하지 않게 브랜드당 개수 제한
+      const onStyle = products.filter((p) => matchesStyle(p, input.styles))
+      const offStyle = products.filter((p) => !matchesStyle(p, input.styles))
+      const picked: MarketProduct[] = []
+      const overflow: MarketProduct[] = []
+      const brandCount = new Map<string, number>()
+
+      // 풀에서 가중 랜덤으로 뽑되 브랜드 한도 초과분은 따로 보관
+      const pickFrom = (items: MarketProduct[]) => {
+        const pool = [...items]
+        while (picked.length < RETURN_COUNT && pool.length > 0) {
+          const [item] = pool.splice(weightedPickIndex(pool.length), 1)
+          const brand = normalize(item.brand)
+          if ((brandCount.get(brand) ?? 0) >= MAX_PER_BRAND) {
+            overflow.push(item)
+            continue
+          }
+          brandCount.set(brand, (brandCount.get(brand) ?? 0) + 1)
+          picked.push(item)
+        }
+      }
+      pickFrom(onStyle)
+      pickFrom(offStyle)
+
+      // 브랜드가 다양하지 않아 모자라면 한도 무시하고 채움
+      for (const item of overflow) {
+        if (picked.length >= RETURN_COUNT) break
+        picked.push(item)
+      }
+      return { products: picked }
+    },
+  })
+
+// 찜 정보 없는 기본 인스턴스
+export const searchProducts = createSearchProducts()
