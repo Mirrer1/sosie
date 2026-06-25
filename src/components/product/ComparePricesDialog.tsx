@@ -1,6 +1,7 @@
 'use client'
 
-import { ExternalLinkIcon, LoaderIcon, TriangleAlertIcon } from 'lucide-react'
+import { ExternalLinkIcon, TriangleAlertIcon } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 import { type ComparePricesOutput } from '@/types/tool'
 
 type ComparePricesDialogProps = {
@@ -89,13 +91,11 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
           </div>
         )}
 
-        <div className="mt-1 -mr-2 max-h-[50vh] space-y-2 overflow-y-auto py-1 pr-2">
-          {isLoading && (
-            <div className="text-muted-foreground flex flex-col items-center gap-2 py-8 text-sm">
-              <LoaderIcon className="h-5 w-5 animate-spin" />
-              <span>판매처 가격을 모으는 중...</span>
-            </div>
-          )}
+        <div className="mt-1 max-h-[50vh] [scrollbar-gutter:stable] space-y-2 overflow-y-auto py-1">
+          {isLoading &&
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[58px] w-full rounded-lg" />
+            ))}
 
           {error && !isLoading && (
             <div className="text-destructive flex flex-col items-center gap-2 py-8 text-sm">
@@ -113,11 +113,14 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
           {!isLoading &&
             !error &&
             sortedSources?.map((s, idx) => (
-              <a
+              <motion.a
                 key={`${s.seller}-${idx}`}
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, ease: 'easeOut', delay: idx * 0.08 }}
                 className="bg-card hover:bg-accent flex items-center gap-3 rounded-lg border p-3 transition-colors"
               >
                 <p className="min-w-0 flex-1 truncate text-sm">{s.seller}</p>
@@ -138,7 +141,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
                   <ExternalLinkIcon className="-mt-px h-3.5 w-3.5" />
                   구매
                 </Button>
-              </a>
+              </motion.a>
             ))}
         </div>
 
@@ -150,7 +153,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
               rel="noopener noreferrer"
               className="bg-primary text-primary-foreground flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium transition-opacity hover:opacity-90"
             >
-              최저가 {lowestPrice?.toLocaleString()}원으로 구매
+              최저가 {lowestPrice?.toLocaleString()}원 보러 가기
               <ExternalLinkIcon className="-mt-px h-4 w-4" />
             </a>
           </div>
