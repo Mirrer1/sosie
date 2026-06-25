@@ -13,6 +13,7 @@ const RETURN_COUNT = 6
 const POOL_COUNT = 18
 const KEYWORD_SCORE = 3
 const BRAND_SCORE = 4
+const STYLE_SCORE = 2
 const PRICE_BONUS = 2
 const FASHION_CATEGORY = '패션'
 const NOISE_KEYWORDS = ['중고', '리퍼', '렌탈', '대여', '도매', '사은품']
@@ -33,8 +34,42 @@ const KEYWORD_SYNONYMS: Record<string, string[]> = {
   재킷: ['자켓'],
 }
 
+// 스타일을 상품명에 실제로 등장하는 특징 단어로 변환
+const STYLE_KEYWORDS: Record<string, string[]> = {
+  캐주얼: ['스트레이트', '데일리', '베이직'],
+  미니멀: ['베이직', '슬림', '솔리드', '미니멀'],
+  스트릿: ['와이드', '오버핏', '카고', '벌룬', '워싱', '데미지'],
+  빈티지: ['워싱', '워시드', '빈티지', '데미지', '페이드'],
+  베이직: ['베이직', '스트레이트', '솔리드', '레귤러'],
+  스포티: ['트랙', '져지', '조거', '나일론', '트레이닝'],
+  포멀: ['슬랙스', '셋업', '테일러드', '드레스'],
+  아메카지: ['치노', '코듀로이', '워크', '셀비지'],
+}
+
 // 공백 제거 + 소문자 정규화
 const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase()
+
+// 선호 스타일을 특징 단어 목록으로 펼침
+export const styleHints = (styles?: string[]): string[] => {
+  if (!styles) return []
+  const result = new Set<string>()
+  for (const style of styles) {
+    const hints = STYLE_KEYWORDS[style.replace(/\s+/g, '')]
+    if (hints) hints.forEach((h) => result.add(h))
+  }
+  return [...result]
+}
+
+// 상품이 선호 스타일의 특징 단어를 하나라도 가지면 true
+export const matchesStyle = (
+  product: { name: string; brand: string },
+  styles?: string[],
+): boolean => {
+  const hints = styleHints(styles)
+  if (hints.length === 0) return false
+  const haystack = normalize(`${product.name} ${product.brand}`)
+  return hints.some((hint) => haystack.includes(normalize(hint)))
+}
 
 // 앞쪽(상위)일수록 높은 가중치로 count개를 비복원 추출
 const weightedSample = <T>(items: T[], count: number): T[] => {
@@ -93,17 +128,24 @@ export const buildQuery = ({
   keywords,
   brand,
   includeOtherMalls,
-}: Pick<SearchProductsInput, 'keywords' | 'brand' | 'includeOtherMalls'>): string => {
+  styleHint,
+}: Pick<SearchProductsInput, 'keywords' | 'brand' | 'includeOtherMalls'> & {
+  styleHint?: string
+}): string => {
   const parts: string[] = []
   if (!includeOtherMalls) parts.push('무신사')
   if (brand) parts.push(brand)
+  if (styleHint) parts.push(styleHint)
   parts.push(...keywords)
   return parts.join(' ')
 }
 
 // 결과가 없을 때 단계적으로 완화해 시도할 쿼리 목록 (구체 -> 광범위)
 export const buildQueryVariants = (input: SearchProductsInput): string[] => {
-  const variants = [buildQuery(input)]
+  const variants: string[] = []
+  const hint = styleHints(input.styles)[0]
+  if (hint) variants.push(buildQuery({ ...input, styleHint: hint }))
+  variants.push(buildQuery(input))
   if (input.brand) {
     variants.push(buildQuery({ ...input, brand: undefined }))
   }
@@ -172,6 +214,7 @@ export const scoreProduct = (product: MarketProduct, input: SearchProductsInput)
     if (haystack.includes(normalize(keyword))) score += KEYWORD_SCORE
   }
   if (input.brand && haystack.includes(normalize(input.brand))) score += BRAND_SCORE
+  if (matchesStyle(product, input.styles)) score += STYLE_SCORE
   if (input.priceMin !== undefined && input.priceMax !== undefined) {
     const center = (input.priceMin + input.priceMax) / 2
     const half = (input.priceMax - input.priceMin) / 2
@@ -255,6 +298,13 @@ export const searchProducts = tool({
       }
       if (collected.length >= POOL_COUNT) break
     }
-    return { products: weightedSample(collected, RETURN_COUNT) }
+    // 스타일 맞는 상품을 먼저 채우고, 모자라면 나머지로 메꿈 (빈 결과 방지)
+    const onStyle = collected.filter((p) => matchesStyle(p, input.styles))
+    const offStyle = collected.filter((p) => !matchesStyle(p, input.styles))
+    const picked = weightedSample(onStyle, RETURN_COUNT)
+    if (picked.length < RETURN_COUNT) {
+      picked.push(...weightedSample(offStyle, RETURN_COUNT - picked.length))
+    }
+    return { products: picked }
   },
 })

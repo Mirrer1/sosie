@@ -10,6 +10,12 @@ export const searchProductsInputSchema = z.object({
     .describe(
       '검색 키워드 2~4개, 최소 1개 필수. 같은 뜻의 다른 표기를 함께 넣어 매칭률을 높이세요 (청바지 → ["청바지", "데님"], 맨투맨 → ["맨투맨", "스웨트셔츠"], 운동화 → ["운동화", "스니커즈"], 후드 → ["후드", "후디"]). 사용자가 말한 핏·색상·소재도 키워드로 추가.',
     ),
+  styles: z
+    .array(z.string())
+    .optional()
+    .describe(
+      '사용자 선호 스타일 태그 (예: ["캐주얼", "미니멀"]). 프로필에 스타일이 있으면 그대로 넣으세요. 결과 정렬에만 쓰이고 검색을 좁히지 않습니다.',
+    ),
   brand: z.string().optional().describe('브랜드 (예: "무신사 스탠다드"). 사용자가 선호하면 지정.'),
   priceMin: z
     .number()

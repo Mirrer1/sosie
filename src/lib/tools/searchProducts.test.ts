@@ -10,7 +10,9 @@ import {
   isRelevantItem,
   mapNaverItem,
   matchesKeywords,
+  matchesStyle,
   scoreProduct,
+  styleHints,
 } from './searchProducts'
 
 const SAMPLE_ITEM = {
@@ -281,5 +283,59 @@ describe('scoreProduct', () => {
     const low = scoreProduct(partial, { keywords: ['청바지', '와이드'], brand: '커버낫' })
 
     expect(high).toBeGreaterThan(low)
+  })
+
+  it('스타일 특징 단어가 맞으면 가산점, 없으면 기존 점수 유지', () => {
+    const product = mapNaverItem({ ...SAMPLE_ITEM, title: '스트레이트 데님 팬츠', brand: '무신사' })
+
+    const withStyle = scoreProduct(product, { keywords: ['청바지', '데님'], styles: ['캐주얼'] })
+    const withoutStyle = scoreProduct(product, { keywords: ['청바지', '데님'] })
+
+    expect(withStyle).toBeGreaterThan(withoutStyle)
+  })
+})
+
+describe('styleHints', () => {
+  it('스타일을 상품명에 나오는 특징 단어로 펼침', () => {
+    expect(styleHints(['스트릿'])).toContain('와이드')
+    expect(styleHints(['캐주얼'])).toContain('스트레이트')
+  })
+
+  it('스타일이 없으면 빈 배열', () => {
+    expect(styleHints()).toEqual([])
+    expect(styleHints(['모르는스타일'])).toEqual([])
+  })
+})
+
+describe('matchesStyle', () => {
+  it('특징 단어가 상품명에 있으면 true', () => {
+    const wide = mapNaverItem({ ...SAMPLE_ITEM, title: '오버핏 와이드 데님 팬츠' })
+
+    expect(matchesStyle(wide, ['스트릿'])).toBe(true)
+  })
+
+  it('특징 단어가 없으면 false', () => {
+    const slim = mapNaverItem({ ...SAMPLE_ITEM, title: '슬림 데님 팬츠' })
+
+    expect(matchesStyle(slim, ['스트릿'])).toBe(false)
+  })
+
+  it('스타일 미지정이면 항상 false', () => {
+    const wide = mapNaverItem({ ...SAMPLE_ITEM, title: '오버핏 와이드 데님 팬츠' })
+
+    expect(matchesStyle(wide)).toBe(false)
+  })
+})
+
+describe('buildQueryVariants 스타일', () => {
+  it('스타일이 있으면 특징 단어를 넣은 쿼리를 맨 앞에 둠', () => {
+    const variants = buildQueryVariants({ keywords: ['청바지'], styles: ['스트릿'] })
+
+    expect(variants[0]).toBe('무신사 와이드 청바지')
+    expect(variants).toContain('무신사 청바지')
+  })
+
+  it('스타일이 없으면 기존과 동일', () => {
+    expect(buildQueryVariants({ keywords: ['청바지'] })).toEqual(['무신사 청바지'])
   })
 })
