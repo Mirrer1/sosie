@@ -344,23 +344,20 @@ export const createSearchProducts = (favoriteBrands?: string[]) =>
       const merged = responses.flatMap((r) => r.items)
       let { products } = buildOutput({ total: 0, display: 0, items: merged }, input, favoriteBrands)
 
-      // 결과가 모자라면 넓은 쿼리로 한 번 더 채움
+      // 결과가 모자라면 키워드를 동의어까지 펼쳐 각각 넓게 재검색
       if (products.length < RETURN_COUNT) {
-        const broadQuery = buildQuery({
-          keywords: [input.keywords[0]],
-          includeOtherMalls: input.includeOtherMalls,
-        })
-        try {
-          const broad = await fetchNaverShop(broadQuery)
-          merged.push(...broad.items)
-          products = buildOutput(
-            { total: 0, display: 0, items: merged },
-            input,
-            favoriteBrands,
-          ).products
-        } catch {
-          // 보강 실패는 무시하고 기존 결과 사용
+        const broadQueries = expandKeywords(input.keywords).map((keyword) =>
+          buildQuery({ keywords: [keyword], includeOtherMalls: input.includeOtherMalls }),
+        )
+        const broadSettled = await Promise.allSettled(broadQueries.map(fetchNaverShop))
+        for (const result of broadSettled) {
+          if (result.status === 'fulfilled') merged.push(...result.value.items)
         }
+        products = buildOutput(
+          { total: 0, display: 0, items: merged },
+          input,
+          favoriteBrands,
+        ).products
       }
 
       // 스타일 맞는 상품을 우선하고 브랜드당 개수를 제한해 쏠림 방지

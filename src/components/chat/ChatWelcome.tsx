@@ -7,9 +7,9 @@ type ChatWelcomeProps = {
 }
 
 const SEED_EXAMPLES = [
-  '출근할 때 입을 셔츠 추천해줘',
+  '여름에 입기 좋은 반팔티 추천해줘',
   '캐주얼한 와이드 데님 보여줘',
-  '3만원대 반바지 골라줘',
+  '5만원대 반바지 골라줘',
 ]
 
 const CONTAINER_VARIANTS = {
