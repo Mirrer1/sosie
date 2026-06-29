@@ -1,6 +1,6 @@
 'use client'
 
-import { ExternalLinkIcon, RefreshCwIcon, TriangleAlertIcon } from 'lucide-react'
+import { ExternalLinkIcon, LoaderIcon, RefreshCwIcon, TriangleAlertIcon } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Skeleton } from '@/components/ui/skeleton'
 import { type ComparePricesOutput } from '@/types/tool'
 
 type ComparePricesDialogProps = {
@@ -110,10 +109,16 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
           </div>
         )}
 
-        <div className="mt-1 max-h-[50vh] [scrollbar-gutter:stable] space-y-2 overflow-y-auto py-1">
+        <div className="relative mt-1 max-h-[50vh] [scrollbar-gutter:stable] space-y-2 overflow-y-auto py-1">
+          {isLoading && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2">
+              <LoaderIcon className="text-foreground h-6 w-6 animate-spin" />
+              <span className="text-muted-foreground text-xs">최저가 찾는 중...</span>
+            </div>
+          )}
           {isLoading &&
             Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-[58px] w-full rounded-lg" />
+              <div key={i} className="skeleton-shimmer h-[58px] w-full rounded-lg" />
             ))}
 
           {error && !isLoading && (
