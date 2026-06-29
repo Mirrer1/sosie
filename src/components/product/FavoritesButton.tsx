@@ -8,7 +8,7 @@ import { useFavorites } from '@/components/product/FavoritesProvider'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-// 헤더의 찜 목록 열기 버튼, 개수 뱃지 포함
+// 개수 뱃지가 있는 헤더의 찜 목록 열기 버튼
 const FavoritesButton = () => {
   const { favorites } = useFavorites()
   const [open, setOpen] = useState(false)

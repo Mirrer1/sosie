@@ -28,10 +28,10 @@ type NaverShopResponse = {
 // HTML 태그 제거
 const stripHtml = (str: string) => str.replace(/<[^>]*>/g, '')
 
-// 영문+숫자가 섞인 4글자 이상 토큰을 모델코드로 인식
+// 영문과 숫자가 섞인 4글자 이상 토큰을 모델코드로 인식
 const MODEL_CODE_REGEX = /\b(?=[A-Za-z]*\d)(?=[0-9]*[A-Za-z])[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]+)?\b/g
 
-// 상품명에서 대괄호 기호, 소괄호 내용, 모델코드를 제거해 검색·비교용으로 정제
+// 상품명에서 대괄호, 소괄호, 모델코드를 제거해 비교용으로 정제
 export const cleanProductName = (name: string): string =>
   name
     .replace(/[[\]]/g, ' ')
@@ -60,7 +60,7 @@ const tokenize = (name: string): string[] =>
     .split(/\s+/)
     .filter((token) => token.length >= 2)
 
-// 브랜드 불일치 + 모델코드 충돌 + 구별 단어 부족으로 판매처를 거름, 전부 걸러지면 원본 유지
+// 브랜드 불일치, 모델코드 충돌, 구별 단어 부족으로 판매처를 거르고 전부 걸러지면 원본 유지
 export const filterRelevantSources = (
   sources: ComparePricesOutput['sources'],
   productName: string,
@@ -101,7 +101,7 @@ export const filterRelevantSources = (
   return relevant.length > 0 ? relevant : sources
 }
 
-// 네이버 쇼핑 검색 결과 URL은 외부 진입 시 차단됨, 검색 페이지로 우회
+// 네이버 쇼핑 검색 결과 URL은 외부 진입 시 차단되어 검색 페이지로 우회
 const NAVER_BLOCKED_HOSTS = ['shopping.naver.com', 'search.shopping.naver.com']
 
 const buildSafeUrl = (link: string, productName: string, mallName: string): string => {
@@ -117,7 +117,7 @@ const buildSafeUrl = (link: string, productName: string, mallName: string): stri
   }
 }
 
-// 네이버 응답을 Sosie 스키마로 매핑, 네이버 차단 URL은 검색 페이지로 우회
+// 네이버 응답을 Sosie 스키마로 매핑하고 차단 URL은 검색 페이지로 우회
 export const mapNaverResponse = (
   data: NaverShopResponse,
   productName: string,
@@ -162,7 +162,7 @@ const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
   return res.json()
 }
 
-// 상품명으로 판매처별 가격 비교, Tool과 카드 모달 양쪽에서 재사용
+// 상품명으로 판매처별 가격을 비교하며 Tool과 카드 모달이 함께 재사용
 export const runComparePrices = async (
   productName: string,
   brand?: string,

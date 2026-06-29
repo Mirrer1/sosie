@@ -17,13 +17,13 @@ type ProductGridProps = {
 const ProductGrid = ({ products, onCompareOpenChange }: ProductGridProps) => {
   const [selected, setSelected] = useState<MarketProduct | null>(null)
 
-  // 가격비교 대상 선택, 부모에 열림 알림
+  // 가격비교 대상을 선택하고 부모에 열림 알림
   const handleSelect = (product: MarketProduct) => {
     setSelected(product)
     onCompareOpenChange?.(true)
   }
 
-  // 가격비교 닫기, 부모에 닫힘 알림
+  // 가격비교를 닫고 부모에 닫힘 알림
   const handleCompareClose = () => {
     setSelected(null)
     onCompareOpenChange?.(false)

@@ -133,7 +133,7 @@ const formatFavoriteBrands = (brands?: string[]): string => {
   return `\n\n## 최근 자주 찜한 브랜드\n${brands.join(', ')}\n\n사용자가 실제로 저장한 브랜드입니다. 추천에 가볍게 참고하고 자연스럽게 한 줄로 언급해도 좋지만, 현재 요청 맥락과 프로필이 우선입니다.`
 }
 
-// Gemini Streaming 채팅 메시지 응답 (Tool Calling 지원)
+// Tool Calling을 지원하는 Gemini Streaming 채팅 메시지 응답
 export const POST = async (req: Request) => {
   const {
     messages,

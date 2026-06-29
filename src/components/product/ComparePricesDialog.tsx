@@ -34,7 +34,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
   const [retryNonce, setRetryNonce] = useState(0)
   const cacheRef = useRef<Map<string, ComparePricesOutput['sources']>>(new Map())
 
-  // 다이얼로그 열릴 때 가격 비교 호출, 같은 상품은 캐시 재사용
+  // 다이얼로그 열릴 때 가격 비교를 호출하며 같은 상품은 캐시 재사용
   useEffect(() => {
     if (!product) return
 

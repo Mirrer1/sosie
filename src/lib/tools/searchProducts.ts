@@ -49,7 +49,7 @@ const KEYWORD_SYNONYMS: Record<string, string[]> = {
   운동화: ['스니커즈'],
 }
 
-// 스타일을 상품명에 실제로 등장하는 특징 단어로 변환
+// 스타일을 상품명에 등장하는 특징 단어로 변환
 const STYLE_KEYWORDS: Record<string, string[]> = {
   캐주얼: ['스트레이트', '데일리', '베이직'],
   미니멀: ['베이직', '슬림', '솔리드', '미니멀'],
@@ -61,7 +61,7 @@ const STYLE_KEYWORDS: Record<string, string[]> = {
   아메카지: ['치노', '코듀로이', '워크', '셀비지'],
 }
 
-// 공백 제거 + 소문자 정규화
+// 공백을 없애고 소문자로 정규화
 const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase()
 
 // 선호 스타일을 특징 단어 목록으로 펼침
@@ -86,7 +86,7 @@ export const matchesStyle = (
   return hints.some((hint) => haystack.includes(normalize(hint)))
 }
 
-// 앞쪽(상위)일수록 높은 가중치로 인덱스 하나 추출
+// 상위일수록 큰 가중치로 인덱스 하나 추출
 const weightedPickIndex = (length: number): number => {
   const total = (length * (length + 1)) / 2
   let r = Math.random() * total
@@ -127,7 +127,7 @@ const extractBrandFromTitle = (title: string): string | undefined => {
   return matched ? matched[1].trim() : undefined
 }
 
-// 상품명 앞 대괄호 제거, 브랜드는 따로 표시
+// 상품명 앞 대괄호를 제거하고 브랜드는 따로 표시
 const stripLeadingBrand = (title: string): string => {
   const cleaned = stripHtml(title)
   return cleaned.replace(/^\s*\[[^\]]*\]\s*/, '').trim() || cleaned
@@ -144,7 +144,7 @@ export const mapNaverItem = (item: NaverShopItem): MarketProduct => ({
   mall: item.mallName || '판매처 미상',
 })
 
-// 검색 쿼리 조립, includeOtherMalls가 아니면 무신사 키워드 강제 첨부
+// includeOtherMalls가 아니면 무신사 키워드를 더해 검색 쿼리 조립
 export const buildQuery = ({
   keywords,
   brand,
@@ -161,7 +161,7 @@ export const buildQuery = ({
   return parts.join(' ')
 }
 
-// 결과가 없을 때 단계적으로 완화해 시도할 쿼리 목록 (구체 -> 광범위)
+// 결과가 없을 때 단계적으로 완화해 시도할 쿼리 목록
 export const buildQueryVariants = (input: SearchProductsInput): string[] => {
   const variants: string[] = []
   const hint = styleHints(input.styles)[0]
@@ -182,7 +182,7 @@ export const buildQueryVariants = (input: SearchProductsInput): string[] => {
 export const isMusinsa = (item: { link?: string; mallName?: string }): boolean =>
   Boolean(item.link?.includes('musinsa.com')) || Boolean(item.mallName?.includes('무신사'))
 
-// 패션 외 카테고리와 중고/도매 등 노이즈 아이템 제외
+// 패션 외 카테고리와 노이즈 아이템 제외
 export const isRelevantItem = (item: { title?: string; category1?: string }): boolean => {
   const name = stripHtml(item.title ?? '')
   if (NOISE_KEYWORDS.some((keyword) => name.includes(keyword))) return false
@@ -208,13 +208,13 @@ export const expandKeywords = (keywords: string[]): string[] => {
   return [...result]
 }
 
-// 키워드가 상품명·브랜드에 하나도 없으면 제외하고 동의어는 살림
+// 키워드가 상품명과 브랜드에 하나도 없으면 제외하고 동의어는 유지
 export const matchesKeywords = (product: MarketProduct, keywords: string[]): boolean => {
   const haystack = normalize(`${product.name} ${product.brand}`)
   return keywords.some((keyword) => haystack.includes(normalize(keyword)))
 }
 
-// 상품명 정규화 기준 중복 제거, 몰만 다른 동일 상품은 1개만 남김
+// 상품명 정규화 기준으로 중복을 제거해 몰만 다른 동일 상품은 하나만 남김
 export const dedupeByName = (products: MarketProduct[]): MarketProduct[] => {
   const seen = new Set<string>()
   const result: MarketProduct[] = []
@@ -227,7 +227,7 @@ export const dedupeByName = (products: MarketProduct[]): MarketProduct[] => {
   return result
 }
 
-// 입력 적합도 점수, 키워드·브랜드 일치와 예산 근접도를 합산
+// 키워드, 브랜드, 예산 근접도를 합산한 입력 적합도 점수
 export const scoreProduct = (
   product: MarketProduct,
   input: SearchProductsInput,
@@ -265,13 +265,13 @@ export const buildOutput = (
     .filter(isRelevantItem)
     .map(mapNaverItem)
 
-  // 예산 필터, 예산 내가 너무 적으면 예산 밖도 포함 (점수의 예산 근접도로 예산 내가 우선)
+  // 예산 내 결과가 적으면 예산 밖도 포함하되 근접도 점수로 예산 내 우선
   const priced = base.filter((p) => matchesPrice(p, input.priceMin, input.priceMax))
   const candidates = priced.length >= RETURN_COUNT ? priced : base
 
   const expanded = { ...input, keywords: expandKeywords(input.keywords) }
 
-  // 키워드 매칭이 하나라도 있으면 그것만, 전부 없으면 카테고리 결과를 그대로 사용
+  // 키워드 매칭이 있으면 그것만 쓰고 전부 없으면 카테고리 결과 사용
   const matched = candidates.filter((p) => matchesKeywords(p, expanded.keywords))
   const pool = matched.length > 0 ? matched : candidates
 
@@ -284,7 +284,7 @@ export const buildOutput = (
   return { products }
 }
 
-// 네이버 쇼핑 검색 API 호출, 일시 실패 시 1회 재시도
+// 네이버 쇼핑 검색 API를 호출하고 실패 시 1회 재시도
 const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
@@ -323,16 +323,14 @@ export const createSearchProducts = (favoriteBrands?: string[]) =>
       '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)를 함께 넣어 매칭률을 높이세요. 기본으로 무신사 입점 상품만 반환합니다.',
     inputSchema: searchProductsInputSchema,
     execute: async (input) => {
-      // 기본 변경 쿼리 + 찜 브랜드 1개 쿼리를 모아 동시 호출 (동시 호출 수를 줄여 실패 회피)
-      const brandQueries = (favoriteBrands ?? [])
-        .slice(0, 1)
-        .map((brand) =>
-          buildQuery({
-            keywords: input.keywords,
-            brand,
-            includeOtherMalls: input.includeOtherMalls,
-          }),
-        )
+      // 기본 변경 쿼리와 찜 브랜드 쿼리를 모아 동시 호출
+      const brandQueries = (favoriteBrands ?? []).slice(0, 1).map((brand) =>
+        buildQuery({
+          keywords: input.keywords,
+          brand,
+          includeOtherMalls: input.includeOtherMalls,
+        }),
+      )
       const queries = [...new Set([...buildQueryVariants(input), ...brandQueries])]
       const settled = await Promise.allSettled(queries.map(fetchNaverShop))
       const responses = settled
@@ -342,11 +340,11 @@ export const createSearchProducts = (favoriteBrands?: string[]) =>
         throw (settled[0] as PromiseRejectedResult).reason
       }
 
-      // 모든 응답을 합쳐 점수·중복 제거 후 상위 풀 구성
+      // 모든 응답을 합쳐 점수순 정렬과 중복 제거로 상위 풀 구성
       const merged = responses.flatMap((r) => r.items)
       let { products } = buildOutput({ total: 0, display: 0, items: merged }, input, favoriteBrands)
 
-      // 결과가 모자라면 넓은 쿼리로 한 번 더 채움 (일부 호출 실패·좁은 검색 보정)
+      // 결과가 모자라면 넓은 쿼리로 한 번 더 채움
       if (products.length < RETURN_COUNT) {
         const broadQuery = buildQuery({
           keywords: [input.keywords[0]],
@@ -365,7 +363,7 @@ export const createSearchProducts = (favoriteBrands?: string[]) =>
         }
       }
 
-      // 스타일 맞는 상품 우선, 한 브랜드가 결과를 독점하지 않게 브랜드당 개수 제한
+      // 스타일 맞는 상품을 우선하고 브랜드당 개수를 제한해 쏠림 방지
       const onStyle = products.filter((p) => matchesStyle(p, input.styles))
       const offStyle = products.filter((p) => !matchesStyle(p, input.styles))
       const picked: MarketProduct[] = []
@@ -389,7 +387,7 @@ export const createSearchProducts = (favoriteBrands?: string[]) =>
       pickFrom(onStyle)
       pickFrom(offStyle)
 
-      // 브랜드가 다양하지 않아 모자라면 한도 무시하고 채움
+      // 브랜드가 부족하면 한도 무시하고 채움
       for (const item of overflow) {
         if (picked.length >= RETURN_COUNT) break
         picked.push(item)

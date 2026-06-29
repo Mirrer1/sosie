@@ -109,7 +109,7 @@ const ChatRoot = () => {
     setImageFile(file)
   }
 
-  // 매 요청에 프로필·찜 브랜드 첨부
+  // 매 요청에 프로필과 찜 브랜드 첨부
   const buildRequestOptions = () => ({
     body: { profile, favoriteBrands: topFavoriteBrands(favorites) },
   })
@@ -165,7 +165,7 @@ const ChatRoot = () => {
     messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' })
   }
 
-  // 스크롤 위치로 맨 아래 근접 여부 판단, 버튼 노출 토글
+  // 스크롤 위치로 맨 아래 근접 여부를 판단해 버튼 노출 토글
   const handleScroll = () => {
     const el = scrollContainerRef.current
     if (!el) return
@@ -175,7 +175,7 @@ const ChatRoot = () => {
     setShowScrollDown(!atBottom)
   }
 
-  // 드래그 진입, Files 타입 확인하고 counter 증가
+  // 드래그 진입 시 Files 타입을 확인하고 counter 증가
   const handleDragEnter = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
     if (!Array.from(e.dataTransfer.types).includes('Files')) return
@@ -183,7 +183,7 @@ const ChatRoot = () => {
     setIsDragging(true)
   }
 
-  // 드래그 떠남, counter 감소 후 0이면 오버레이 닫기
+  // 드래그 떠날 때 counter 감소 후 0이면 오버레이 닫기
   const handleDragLeave = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
     dragCounter.current -= 1
@@ -193,12 +193,12 @@ const ChatRoot = () => {
     }
   }
 
-  // 드래그 오버, drop 허용을 위해 preventDefault
+  // drop 허용 위해 드래그 오버에서 preventDefault
   const handleDragOver = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
   }
 
-  // 드롭, 첫 파일 가져와서 검증
+  // 드롭 시 첫 파일을 가져와 검증
   const handleDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
     dragCounter.current = 0
@@ -207,14 +207,14 @@ const ChatRoot = () => {
     if (file) acceptImage(file)
   }
 
-  // 맨 아래 근처일 때 메시지 변경/상태 전환 시 자동 스크롤
+  // 맨 아래 근처일 때 메시지나 상태 변경 시 자동 스크롤
   useEffect(() => {
     if (isAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
     }
   }, [messages, status])
 
-  // 마운트 시 localStorage에서 대화 히스토리, 프로필 복원
+  // 마운트 시 localStorage에서 대화 히스토리와 프로필 복원
   // 첫 진입이면 온보딩
   useEffect(() => {
     try {
@@ -280,7 +280,7 @@ const ChatRoot = () => {
     return () => window.removeEventListener('sosie:clear-chat', handler)
   }, [setMessages])
 
-  // updateProfile Tool 결과 감지, 즉시 반영 대신 확인 대기열에 추가
+  // updateProfile Tool 결과를 감지해 즉시 반영 대신 확인 대기열에 추가
   useEffect(() => {
     for (const msg of messages) {
       if (msg.role !== 'assistant') continue

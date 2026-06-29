@@ -22,7 +22,7 @@ const ITEM_VARIANTS = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
 } as const
 
-// 메시지 없을 때 환영 화면, 예시 칩 클릭 시 즉시 전송
+// 메시지 없을 때 환영 화면을 보여주며 예시 칩 클릭 시 즉시 전송
 const ChatWelcome = ({ onExampleClick }: ChatWelcomeProps) => {
   return (
     <motion.div

@@ -38,7 +38,7 @@ const ChatComposer = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
 
-  // 첨부 이미지의 미리보기 URL (imageFile 변경 시 자동 재계산)
+  // imageFile 변경 시 다시 만드는 첨부 이미지 미리보기 URL
   const previewUrl = useMemo(() => (imageFile ? URL.createObjectURL(imageFile) : null), [imageFile])
 
   // 이미지 검증 후 부모에게 전달
@@ -75,7 +75,7 @@ const ChatComposer = ({
     }
   }
 
-  // Enter 보내기, Shift+Enter 또는 Ctrl+Enter 줄바꿈
+  // Enter로 전송하고 Shift+Enter나 Ctrl+Enter로 줄바꿈
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
       e.preventDefault()

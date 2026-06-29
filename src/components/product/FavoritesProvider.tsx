@@ -24,7 +24,7 @@ const FavoritesProvider = ({ children }: { children: ReactNode }) => {
 
   const isFavorite = (id: string) => favorites.some((p) => p.id === id)
 
-  // 찜 추가/제거 토글 후 저장
+  // 찜 토글 후 저장
   const toggleFavorite = (product: MarketProduct) => {
     setFavorites((prev) => {
       const exists = prev.some((p) => p.id === product.id)

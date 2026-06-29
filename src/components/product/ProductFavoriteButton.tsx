@@ -16,7 +16,7 @@ const ProductFavoriteButton = ({ product }: ProductFavoriteButtonProps) => {
   const { isFavorite, toggleFavorite } = useFavorites()
   const active = isFavorite(product.id)
 
-  // 카드 클릭(가격비교)과 분리하기 위해 전파 차단
+  // 카드 클릭과 분리하려 이벤트 전파 차단
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     toggleFavorite(product)

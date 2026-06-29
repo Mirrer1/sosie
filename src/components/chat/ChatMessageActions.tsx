@@ -10,7 +10,7 @@ type ChatMessageActionsProps = {
   onRegenerate?: () => void
 }
 
-// AI 답변 하단의 복사 / 새로고침 액션
+// AI 답변 하단의 복사와 새로고침 액션
 const ChatMessageActions = ({ text, onRegenerate }: ChatMessageActionsProps) => {
   // 답변 텍스트를 클립보드로 복사
   const handleCopy = async () => {
