@@ -260,11 +260,14 @@ export const buildOutput = (
   input: SearchProductsInput,
   favoriteBrands?: string[],
 ): SearchProductsOutput => {
-  const candidates = response.items
+  const base = response.items
     .filter((item) => (input.includeOtherMalls ? true : isMusinsa(item)))
     .filter(isRelevantItem)
     .map(mapNaverItem)
-    .filter((p) => matchesPrice(p, input.priceMin, input.priceMax))
+
+  // 예산 필터, 예산 내가 너무 적으면 예산 밖도 포함 (점수의 예산 근접도로 예산 내가 우선)
+  const priced = base.filter((p) => matchesPrice(p, input.priceMin, input.priceMax))
+  const candidates = priced.length >= RETURN_COUNT ? priced : base
 
   const expanded = { ...input, keywords: expandKeywords(input.keywords) }
 
@@ -281,7 +284,7 @@ export const buildOutput = (
   return { products }
 }
 
-// 네이버 쇼핑 검색 API 호출
+// 네이버 쇼핑 검색 API 호출, 일시 실패 시 1회 재시도
 const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
   const clientId = process.env.NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
@@ -294,19 +297,23 @@ const fetchNaverShop = async (query: string): Promise<NaverShopResponse> => {
   url.searchParams.set('query', query)
   url.searchParams.set('display', String(DISPLAY_COUNT))
   url.searchParams.set('sort', 'sim')
-
-  const res = await fetch(url, {
-    headers: {
-      'X-Naver-Client-Id': clientId,
-      'X-Naver-Client-Secret': clientSecret,
-    },
-  })
-
-  if (!res.ok) {
-    throw new Error(`네이버 API 오류: ${res.status}`)
+  const headers = {
+    'X-Naver-Client-Id': clientId,
+    'X-Naver-Client-Secret': clientSecret,
   }
 
-  return res.json()
+  let lastError: unknown
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, { headers })
+      if (res.ok) return await res.json()
+      lastError = new Error(`네이버 API 오류: ${res.status}`)
+    } catch (error) {
+      lastError = error
+    }
+    if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw lastError
 }
 
 // 자주 찜한 브랜드를 랭킹에 반영하는 searchProducts 인스턴스 생성
@@ -316,10 +323,16 @@ export const createSearchProducts = (favoriteBrands?: string[]) =>
       '무신사에 입점된 상품을 키워드와 가격대로 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)를 함께 넣어 매칭률을 높이세요. 기본으로 무신사 입점 상품만 반환합니다.',
     inputSchema: searchProductsInputSchema,
     execute: async (input) => {
-      // 기본 변경 쿼리 + 찜 브랜드별 쿼리를 모아 동시 호출, 전부 실패면 에러
-      const brandQueries = (favoriteBrands ?? []).map((brand) =>
-        buildQuery({ keywords: input.keywords, brand, includeOtherMalls: input.includeOtherMalls }),
-      )
+      // 기본 변경 쿼리 + 찜 브랜드 1개 쿼리를 모아 동시 호출 (동시 호출 수를 줄여 실패 회피)
+      const brandQueries = (favoriteBrands ?? [])
+        .slice(0, 1)
+        .map((brand) =>
+          buildQuery({
+            keywords: input.keywords,
+            brand,
+            includeOtherMalls: input.includeOtherMalls,
+          }),
+        )
       const queries = [...new Set([...buildQueryVariants(input), ...brandQueries])]
       const settled = await Promise.allSettled(queries.map(fetchNaverShop))
       const responses = settled
@@ -331,11 +344,26 @@ export const createSearchProducts = (favoriteBrands?: string[]) =>
 
       // 모든 응답을 합쳐 점수·중복 제거 후 상위 풀 구성
       const merged = responses.flatMap((r) => r.items)
-      const { products } = buildOutput(
-        { total: 0, display: 0, items: merged },
-        input,
-        favoriteBrands,
-      )
+      let { products } = buildOutput({ total: 0, display: 0, items: merged }, input, favoriteBrands)
+
+      // 결과가 모자라면 넓은 쿼리로 한 번 더 채움 (일부 호출 실패·좁은 검색 보정)
+      if (products.length < RETURN_COUNT) {
+        const broadQuery = buildQuery({
+          keywords: [input.keywords[0]],
+          includeOtherMalls: input.includeOtherMalls,
+        })
+        try {
+          const broad = await fetchNaverShop(broadQuery)
+          merged.push(...broad.items)
+          products = buildOutput(
+            { total: 0, display: 0, items: merged },
+            input,
+            favoriteBrands,
+          ).products
+        } catch {
+          // 보강 실패는 무시하고 기존 결과 사용
+        }
+      }
 
       // 스타일 맞는 상품 우선, 한 브랜드가 결과를 독점하지 않게 브랜드당 개수 제한
       const onStyle = products.filter((p) => matchesStyle(p, input.styles))

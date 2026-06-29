@@ -142,7 +142,7 @@ describe('buildOutput', () => {
     expect(output.products).toHaveLength(3)
   })
 
-  it('가격 범위 필터 적용', () => {
+  it('예산 내 결과가 적으면 예산 밖도 채우되 예산 내를 우선', () => {
     const output = buildOutput(SAMPLE_RESPONSE, {
       keywords: ['청바지'],
       includeOtherMalls: true,
@@ -150,8 +150,8 @@ describe('buildOutput', () => {
       priceMax: 100000,
     })
 
-    expect(output.products.every((p) => p.price >= 30000 && p.price <= 100000)).toBe(true)
-    expect(output.products).toHaveLength(1)
+    expect(output.products.length).toBeGreaterThan(1)
+    expect(output.products[0].price).toBe(49000)
   })
 
   it('브랜드 일치 상품을 네이버 순서보다 위로 재정렬', () => {
