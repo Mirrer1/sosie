@@ -133,7 +133,7 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-2">
+        <div className="flex min-h-[150px] flex-col justify-center gap-3 py-2">
           {step === 1 && (
             <div className="flex flex-wrap gap-2">
               {STYLE_OPTIONS.map((s) => (
@@ -204,7 +204,7 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
           )}
 
           {step === 3 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               {SIZE_OPTIONS.map((s) => (
                 <button
                   key={s}
