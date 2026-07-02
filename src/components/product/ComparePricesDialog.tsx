@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useLanguage } from '@/providers/LanguageProvider'
 import { type ComparePricesOutput } from '@/types/tool'
 
 type ComparePricesDialogProps = {
@@ -28,6 +29,7 @@ type ComparePricesDialogProps = {
 
 // 카드 클릭 시 열리는 판매처별 가격 비교 다이얼로그
 const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => {
+  const { t } = useLanguage()
   const [sources, setSources] = useState<ComparePricesOutput['sources'] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +61,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
     })
       .then(async (res) => {
         const data = await res.json()
-        if (!res.ok) throw new Error(data?.error ?? '가격 비교 실패')
+        if (!res.ok) throw new Error(data?.error ?? t('compare.error'))
         return data as ComparePricesOutput
       })
       .then((data) => {
@@ -68,12 +70,12 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
       })
       .catch((e) => {
         if (e.name === 'AbortError') return
-        setError(e.message ?? '가격 비교 실패')
+        setError(e.message ?? t('compare.error'))
       })
       .finally(() => setIsLoading(false))
 
     return () => ctrl.abort()
-  }, [product, retryNonce])
+  }, [product, retryNonce, t])
 
   // 캐시 비우고 다시 요청
   const handleRetry = () => {
@@ -84,13 +86,15 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
   const sortedSources = sources ? [...sources].sort((a, b) => a.price - b.price) : null
   const lowestSource = sortedSources?.[0]
   const lowestPrice = lowestSource?.price
+  const lowestPriceText =
+    lowestPrice !== undefined ? `${lowestPrice.toLocaleString()}${t('currency.suffix')}` : ''
 
   return (
     <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-base">가격 비교</DialogTitle>
-          <DialogDescription>여러 판매처에서 찾은 같은 상품의 가격이에요.</DialogDescription>
+          <DialogTitle className="text-base">{t('compare.title')}</DialogTitle>
+          <DialogDescription>{t('compare.desc')}</DialogDescription>
         </DialogHeader>
 
         {product && (
@@ -113,7 +117,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
           {isLoading && (
             <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2">
               <LoaderIcon className="text-foreground h-6 w-6 animate-spin" />
-              <span className="text-muted-foreground text-xs">최저가 찾는 중...</span>
+              <span className="text-muted-foreground text-xs">{t('compare.loading')}</span>
             </div>
           )}
           {isLoading &&
@@ -129,15 +133,13 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
               </div>
               <Button size="sm" variant="outline" onClick={handleRetry}>
                 <RefreshCwIcon className="h-3.5 w-3.5" />
-                다시 시도
+                {t('compare.retry')}
               </Button>
             </div>
           )}
 
           {!isLoading && !error && sortedSources && sortedSources.length === 0 && (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              매칭되는 판매처 결과를 못 찾았어요.
-            </p>
+            <p className="text-muted-foreground py-8 text-center text-sm">{t('compare.empty')}</p>
           )}
 
           {!isLoading &&
@@ -156,20 +158,24 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
                 <p className="min-w-0 flex-1 truncate text-sm">{s.seller}</p>
                 {s.price === lowestPrice && sortedSources.length > 1 && (
                   <span className="bg-primary text-primary-foreground mt-px shrink-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none font-semibold">
-                    최저가
+                    {t('compare.lowest')}
                   </span>
                 )}
                 <div className="flex shrink-0 flex-col items-end gap-0.5">
-                  <p className="text-sm font-semibold">{s.price.toLocaleString()}원</p>
+                  <p className="text-sm font-semibold">
+                    {s.price.toLocaleString()}
+                    {t('currency.suffix')}
+                  </p>
                   {lowestPrice !== undefined && s.price !== lowestPrice && (
                     <p className="text-muted-foreground text-xs">
-                      +{(s.price - lowestPrice).toLocaleString()}원
+                      +{(s.price - lowestPrice).toLocaleString()}
+                      {t('currency.suffix')}
                     </p>
                   )}
                 </div>
                 <Button size="sm" variant="outline" className="shrink-0" tabIndex={-1}>
                   <ExternalLinkIcon className="-mt-px h-3.5 w-3.5" />
-                  구매
+                  {t('compare.buy')}
                 </Button>
               </motion.a>
             ))}
@@ -183,7 +189,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
               rel="noopener noreferrer"
               className="bg-primary text-primary-foreground flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium transition-opacity hover:opacity-90"
             >
-              최저가 {lowestPrice?.toLocaleString()}원 보러 가기
+              {t('compare.viewLowest').replace('{price}', lowestPriceText)}
               <ExternalLinkIcon className="-mt-px h-4 w-4" />
             </a>
           </div>

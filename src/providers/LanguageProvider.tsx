@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, createContext, useContext, useEffect, useState } from 'react'
+import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 import { type DictKey, dictionaries } from '@/i18n/dictionaries'
 import { DEFAULT_LANGUAGE, type LanguageCode } from '@/i18n/languages'
@@ -35,10 +35,13 @@ const LanguageProvider = ({ children }: { children: ReactNode }) => {
   }
 
   // 선택 언어 사전에서 문구를 찾되 없으면 기본 언어로 대체
-  const t = (key: DictKey) => {
-    const dict = dictionaries[lang] ?? dictionaries[DEFAULT_LANGUAGE]
-    return dict?.[key] ?? dictionaries[DEFAULT_LANGUAGE]?.[key] ?? key
-  }
+  const t = useCallback(
+    (key: DictKey) => {
+      const dict = dictionaries[lang] ?? dictionaries[DEFAULT_LANGUAGE]
+      return dict?.[key] ?? dictionaries[DEFAULT_LANGUAGE]?.[key] ?? key
+    },
+    [lang],
+  )
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, t }}>{children}</LanguageContext.Provider>

@@ -3,6 +3,7 @@ import { type LanguageCode } from '@/i18n/languages'
 // UI 문구 사전 키
 export type DictKey =
   | 'header.language'
+  | 'header.theme'
   | 'welcome.title'
   | 'welcome.subtitle'
   | 'welcome.example1'
@@ -85,11 +86,28 @@ export type DictKey =
   | 'brand.iabStudio'
   | 'brand.adidas'
   | 'brand.nike'
+  | 'favorites.label'
+  | 'favorites.title'
+  | 'favorites.desc'
+  | 'favorites.empty'
+  | 'favorites.add'
+  | 'favorites.remove'
+  | 'compare.title'
+  | 'compare.desc'
+  | 'compare.loading'
+  | 'compare.retry'
+  | 'compare.empty'
+  | 'compare.lowest'
+  | 'compare.buy'
+  | 'compare.error'
+  | 'compare.viewLowest'
+  | 'currency.suffix'
 
 // 언어별 UI 문구 사전
 export const dictionaries: Partial<Record<LanguageCode, Record<DictKey, string>>> = {
   ko: {
     'header.language': '언어',
+    'header.theme': '테마 변경',
     'welcome.title': '내 취향을 닮은 옷, 같이 골라드려요',
     'welcome.subtitle': '스타일과 브랜드, 예산을 알려주시면\n어울리는 옷을 골라드릴게요.',
     'welcome.example1': '여름에 입기 좋은 반팔티 추천해줘',
@@ -172,9 +190,26 @@ export const dictionaries: Partial<Record<LanguageCode, Record<DictKey, string>>
     'brand.iabStudio': '아이앱 스튜디오',
     'brand.adidas': '아디다스',
     'brand.nike': '나이키',
+    'favorites.label': '찜 목록',
+    'favorites.title': '찜한 상품',
+    'favorites.desc': '마음에 들어 저장한 상품이에요.',
+    'favorites.empty': '아직 찜한 상품이 없어요. 카드의 하트를 눌러 저장해 보세요.',
+    'favorites.add': '찜하기',
+    'favorites.remove': '찜 해제',
+    'compare.title': '가격 비교',
+    'compare.desc': '여러 판매처에서 찾은 같은 상품의 가격이에요.',
+    'compare.loading': '최저가 찾는 중...',
+    'compare.retry': '다시 시도',
+    'compare.empty': '매칭되는 판매처 결과를 못 찾았어요.',
+    'compare.lowest': '최저가',
+    'compare.buy': '구매',
+    'compare.error': '가격 비교 실패',
+    'compare.viewLowest': '최저가 {price} 보러 가기',
+    'currency.suffix': '원',
   },
   en: {
     'header.language': 'Language',
+    'header.theme': 'Toggle theme',
     'welcome.title': 'Clothes that match your taste, picked together',
     'welcome.subtitle':
       "Tell me your style, brands, and budget\nand I'll pick pieces that suit you.",
@@ -258,5 +293,21 @@ export const dictionaries: Partial<Record<LanguageCode, Record<DictKey, string>>
     'brand.iabStudio': 'IAB Studio',
     'brand.adidas': 'Adidas',
     'brand.nike': 'Nike',
+    'favorites.label': 'Favorites',
+    'favorites.title': 'Saved items',
+    'favorites.desc': 'Items you liked and saved.',
+    'favorites.empty': 'No saved items yet. Tap the heart on a card to save it.',
+    'favorites.add': 'Add to favorites',
+    'favorites.remove': 'Remove from favorites',
+    'compare.title': 'Price comparison',
+    'compare.desc': 'Prices for the same item found across sellers.',
+    'compare.loading': 'Finding the lowest price...',
+    'compare.retry': 'Try again',
+    'compare.empty': 'No matching seller results found.',
+    'compare.lowest': 'Lowest',
+    'compare.buy': 'Buy',
+    'compare.error': 'Price comparison failed',
+    'compare.viewLowest': 'See the lowest price {price}',
+    'currency.suffix': ' won',
   },
 }

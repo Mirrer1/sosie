@@ -1,3 +1,6 @@
+'use client'
+
+import { useLanguage } from '@/providers/LanguageProvider'
 import { type MarketProduct } from '@/types/product'
 
 type ProductCardProps = {
@@ -7,6 +10,8 @@ type ProductCardProps = {
 
 // 단일 상품 카드
 const ProductCard = ({ product, onClick }: ProductCardProps) => {
+  const { t } = useLanguage()
+
   return (
     <button
       type="button"
@@ -23,7 +28,10 @@ const ProductCard = ({ product, onClick }: ProductCardProps) => {
       <div className="flex flex-1 flex-col gap-1 p-3">
         <p className="text-muted-foreground text-xs">{product.brand}</p>
         <p className="line-clamp-2 text-sm leading-snug">{product.name}</p>
-        <p className="mt-auto text-sm font-semibold">{product.price.toLocaleString()}원</p>
+        <p className="mt-auto text-sm font-semibold">
+          {product.price.toLocaleString()}
+          {t('currency.suffix')}
+        </p>
       </div>
     </button>
   )

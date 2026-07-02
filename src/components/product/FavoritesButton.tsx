@@ -7,10 +7,12 @@ import FavoritesDialog from '@/components/product/FavoritesDialog'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useFavorites } from '@/providers/FavoritesProvider'
+import { useLanguage } from '@/providers/LanguageProvider'
 
 // 개수 뱃지가 있는 헤더의 찜 목록 열기 버튼
 const FavoritesButton = () => {
   const { favorites } = useFavorites()
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const count = favorites.length
 
@@ -22,7 +24,7 @@ const FavoritesButton = () => {
             <Button
               variant="ghost"
               size="icon"
-              aria-label="찜 목록"
+              aria-label={t('favorites.label')}
               onClick={() => setOpen(true)}
               className="relative"
             >
@@ -35,7 +37,7 @@ const FavoritesButton = () => {
             </Button>
           }
         />
-        <TooltipContent>찜 목록</TooltipContent>
+        <TooltipContent>{t('favorites.label')}</TooltipContent>
       </Tooltip>
       <FavoritesDialog open={open} onOpenChange={setOpen} />
     </>

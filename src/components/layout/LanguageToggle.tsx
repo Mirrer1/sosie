@@ -10,6 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { LANGUAGES, type LanguageCode } from '@/i18n/languages'
 import { useLanguage } from '@/providers/LanguageProvider'
 
@@ -19,13 +20,20 @@ const LanguageToggle = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="ghost" size="icon" aria-label={t('header.language')}>
-            <LanguagesIcon className="h-[1.2rem] w-[1.2rem]" />
-          </Button>
-        }
-      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon" aria-label={t('header.language')}>
+                  <LanguagesIcon className="h-[1.2rem] w-[1.2rem]" />
+                </Button>
+              }
+            />
+          }
+        />
+        <TooltipContent>{t('header.language')}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuRadioGroup
           value={lang}
