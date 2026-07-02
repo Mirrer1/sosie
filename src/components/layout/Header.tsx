@@ -1,4 +1,5 @@
 import ClearChatButton from '@/components/chat/ClearChatButton'
+import LanguageToggle from '@/components/layout/LanguageToggle'
 import ModeToggle from '@/components/layout/ModeToggle'
 import FavoritesButton from '@/components/product/FavoritesButton'
 import EditProfileButton from '@/components/profile/EditProfileButton'
@@ -14,6 +15,7 @@ const Header = () => {
           <FavoritesButton />
           <EditProfileButton />
           <ClearChatButton />
+          <LanguageToggle />
           <ModeToggle />
         </div>
       </div>
