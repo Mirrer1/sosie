@@ -12,7 +12,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { BRAND_LABEL_KEYS, BUDGET_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/providers/LanguageProvider'
 import {
   BUDGET_RANGES,
   POPULAR_BRANDS,
@@ -36,6 +38,7 @@ const toggle = (arr: string[], v: string): string[] =>
 
 // 첫 진입 또는 헤더 버튼에서 호출되는 프로필 마법사
 const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingDialogProps) => {
+  const { t } = useLanguage()
   const [step, setStep] = useState(1)
   const [styles, setStyles] = useState<string[]>(initialProfile?.styles ?? [])
   const [brands, setBrands] = useState<string[]>(initialProfile?.brands ?? [])
@@ -98,13 +101,13 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {step === 1 && '어떤 스타일 좋아하세요?'}
-            {step === 2 && '선호하는 브랜드 있나요?'}
-            {step === 3 && '평소 사이즈는?'}
-            {step === 4 && '옷에 보통 얼마 쓰세요?'}
+            {step === 1 && t('onboarding.step1Title')}
+            {step === 2 && t('onboarding.step2Title')}
+            {step === 3 && t('onboarding.step3Title')}
+            {step === 4 && t('onboarding.step4Title')}
           </DialogTitle>
           <DialogDescription>
-            {step}/{TOTAL_STEPS} · 다 선택 사항이에요. 원하는 것만 고르고 바로 저장해도 돼요.
+            {step}/{TOTAL_STEPS} · {t('onboarding.optional')}
           </DialogDescription>
         </DialogHeader>
 
@@ -123,7 +126,7 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
                       : 'bg-card hover:bg-accent',
                   )}
                 >
-                  {s}
+                  {STYLE_LABEL_KEYS[s] ? t(STYLE_LABEL_KEYS[s]) : s}
                 </button>
               ))}
             </div>
@@ -144,7 +147,7 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
                         : 'bg-card hover:bg-accent',
                     )}
                   >
-                    {b}
+                    {BRAND_LABEL_KEYS[b] ? t(BRAND_LABEL_KEYS[b]) : b}
                   </button>
                 ))}
               </div>
@@ -153,10 +156,10 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
                   value={brandInput}
                   onChange={(e) => setBrandInput(e.target.value)}
                   onKeyDown={handleBrandKeyDown}
-                  placeholder="다른 브랜드 직접 입력"
+                  placeholder={t('onboarding.brandPlaceholder')}
                 />
                 <Button type="button" onClick={addBrand} disabled={!brandInput.trim()}>
-                  추가
+                  {t('onboarding.add')}
                 </Button>
               </div>
               {brands.filter((b) => !POPULAR_BRANDS.includes(b)).length > 0 && (
@@ -214,7 +217,7 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
                         : 'bg-card hover:bg-accent',
                     )}
                   >
-                    {r.label}
+                    {t(BUDGET_LABEL_KEYS[r.min])}
                   </button>
                 )
               })}
@@ -225,7 +228,7 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
         <DialogFooter className="flex-row justify-between sm:justify-between">
           {step < TOTAL_STEPS ? (
             <Button type="button" variant="ghost" onClick={handleSkip}>
-              건너뛰기
+              {t('onboarding.skip')}
             </Button>
           ) : (
             <span />
@@ -233,16 +236,16 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
           <div className="flex gap-2">
             {step > 1 && (
               <Button type="button" variant="outline" onClick={handlePrev}>
-                이전
+                {t('onboarding.prev')}
               </Button>
             )}
             {step < TOTAL_STEPS && (
               <Button type="button" variant="outline" onClick={handleNext}>
-                다음
+                {t('onboarding.next')}
               </Button>
             )}
             <Button type="button" onClick={handleSave}>
-              저장
+              {t('onboarding.save')}
             </Button>
           </div>
         </DialogFooter>

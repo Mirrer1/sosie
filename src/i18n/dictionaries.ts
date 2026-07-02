@@ -45,6 +45,46 @@ export type DictKey =
   | 'toolStatus.done'
   | 'image.errorType'
   | 'image.errorSize'
+  | 'profile.edit'
+  | 'onboarding.step1Title'
+  | 'onboarding.step2Title'
+  | 'onboarding.step3Title'
+  | 'onboarding.step4Title'
+  | 'onboarding.optional'
+  | 'onboarding.brandPlaceholder'
+  | 'onboarding.add'
+  | 'onboarding.skip'
+  | 'onboarding.prev'
+  | 'onboarding.next'
+  | 'onboarding.save'
+  | 'profileUpdate.title'
+  | 'profileUpdate.later'
+  | 'profileUpdate.apply'
+  | 'profileUpdate.styles'
+  | 'profileUpdate.brands'
+  | 'profileUpdate.size'
+  | 'profileUpdate.budget'
+  | 'profileUpdate.changed'
+  | 'style.casual'
+  | 'style.minimal'
+  | 'style.street'
+  | 'style.vintage'
+  | 'style.basic'
+  | 'style.sporty'
+  | 'style.formal'
+  | 'style.amekaji'
+  | 'budget.under5'
+  | 'budget.5to15'
+  | 'budget.15to30'
+  | 'budget.over30'
+  | 'brand.musinsaStandard'
+  | 'brand.uniformBridge'
+  | 'brand.thisisneverthat'
+  | 'brand.covernat'
+  | 'brand.anderssonBell'
+  | 'brand.iabStudio'
+  | 'brand.adidas'
+  | 'brand.nike'
 
 // 언어별 UI 문구 사전
 export const dictionaries: Partial<Record<LanguageCode, Record<DictKey, string>>> = {
@@ -92,6 +132,46 @@ export const dictionaries: Partial<Record<LanguageCode, Record<DictKey, string>>
     'toolStatus.done': ' 완료',
     'image.errorType': 'jpeg, png, webp 형식만 지원합니다',
     'image.errorSize': '이미지는 5MB 이하만 가능합니다',
+    'profile.edit': '프로필 수정',
+    'onboarding.step1Title': '어떤 스타일 좋아하세요?',
+    'onboarding.step2Title': '선호하는 브랜드 있나요?',
+    'onboarding.step3Title': '평소 사이즈는?',
+    'onboarding.step4Title': '옷에 보통 얼마 쓰세요?',
+    'onboarding.optional': '다 선택 사항이에요. 원하는 것만 고르고 바로 저장해도 돼요.',
+    'onboarding.brandPlaceholder': '다른 브랜드 직접 입력',
+    'onboarding.add': '추가',
+    'onboarding.skip': '건너뛰기',
+    'onboarding.prev': '이전',
+    'onboarding.next': '다음',
+    'onboarding.save': '저장',
+    'profileUpdate.title': '프로필에 반영할까요?',
+    'profileUpdate.later': '나중에',
+    'profileUpdate.apply': '반영',
+    'profileUpdate.styles': '스타일',
+    'profileUpdate.brands': '브랜드',
+    'profileUpdate.size': '사이즈',
+    'profileUpdate.budget': '예산',
+    'profileUpdate.changed': '변경',
+    'style.casual': '캐주얼',
+    'style.minimal': '미니멀',
+    'style.street': '스트릿',
+    'style.vintage': '빈티지',
+    'style.basic': '베이직',
+    'style.sporty': '스포티',
+    'style.formal': '포멀',
+    'style.amekaji': '아메카지',
+    'budget.under5': '5만원 이하',
+    'budget.5to15': '5~15만원',
+    'budget.15to30': '15~30만원',
+    'budget.over30': '30만원 이상',
+    'brand.musinsaStandard': '무신사 스탠다드',
+    'brand.uniformBridge': '유니폼브릿지',
+    'brand.thisisneverthat': '디스이즈네버댓',
+    'brand.covernat': '커버낫',
+    'brand.anderssonBell': '앤더슨벨',
+    'brand.iabStudio': '아이앱 스튜디오',
+    'brand.adidas': '아디다스',
+    'brand.nike': '나이키',
   },
   en: {
     'header.language': 'Language',
@@ -138,5 +218,45 @@ export const dictionaries: Partial<Record<LanguageCode, Record<DictKey, string>>
     'toolStatus.done': ' complete',
     'image.errorType': 'Only jpeg, png, and webp formats are supported',
     'image.errorSize': 'Images must be 5MB or smaller',
+    'profile.edit': 'Edit profile',
+    'onboarding.step1Title': 'What styles do you like?',
+    'onboarding.step2Title': 'Any favorite brands?',
+    'onboarding.step3Title': "What's your usual size?",
+    'onboarding.step4Title': 'How much do you usually spend?',
+    'onboarding.optional': 'All optional. Pick only what you want and save right away.',
+    'onboarding.brandPlaceholder': 'Enter another brand',
+    'onboarding.add': 'Add',
+    'onboarding.skip': 'Skip',
+    'onboarding.prev': 'Back',
+    'onboarding.next': 'Next',
+    'onboarding.save': 'Save',
+    'profileUpdate.title': 'Apply to your profile?',
+    'profileUpdate.later': 'Later',
+    'profileUpdate.apply': 'Apply',
+    'profileUpdate.styles': 'Style',
+    'profileUpdate.brands': 'Brands',
+    'profileUpdate.size': 'Size',
+    'profileUpdate.budget': 'Budget',
+    'profileUpdate.changed': 'changed',
+    'style.casual': 'Casual',
+    'style.minimal': 'Minimal',
+    'style.street': 'Street',
+    'style.vintage': 'Vintage',
+    'style.basic': 'Basic',
+    'style.sporty': 'Sporty',
+    'style.formal': 'Formal',
+    'style.amekaji': 'Amekaji',
+    'budget.under5': 'Under 50,000 won',
+    'budget.5to15': '50,000–150,000 won',
+    'budget.15to30': '150,000–300,000 won',
+    'budget.over30': '300,000 won and up',
+    'brand.musinsaStandard': 'Musinsa Standard',
+    'brand.uniformBridge': 'Uniform Bridge',
+    'brand.thisisneverthat': 'thisisneverthat',
+    'brand.covernat': 'Covernat',
+    'brand.anderssonBell': 'Andersson Bell',
+    'brand.iabStudio': 'IAB Studio',
+    'brand.adidas': 'Adidas',
+    'brand.nike': 'Nike',
   },
 }
