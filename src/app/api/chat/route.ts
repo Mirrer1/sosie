@@ -1,6 +1,7 @@
 import { google } from '@ai-sdk/google'
 import { type UIMessage, convertToModelMessages, stepCountIs, streamText } from 'ai'
 
+import { LANGUAGES, type LanguageCode } from '@/i18n/languages'
 import { comparePrices } from '@/lib/tools/comparePrices'
 import { parseProductUrl } from '@/lib/tools/parseProductUrl'
 import { createSearchProducts } from '@/lib/tools/searchProducts'
@@ -127,6 +128,12 @@ const formatProfile = (profile?: Profile | null): string => {
   return `\n\n## 사용자 프로필 (최신 기준 · 항상 우선)\n${lines.join('\n')}\n\n이 프로필이 항상 최신 기준입니다. 이전 대화에서 searchProducts를 다른 예산·브랜드·사이즈로 호출했더라도, 지금부터는 그 옛 인자를 무시하고 반드시 위 프로필 값으로 검색하세요.`
 }
 
+// 선택 언어를 답변 언어 지시로 변환
+const formatLanguage = (language?: LanguageCode): string => {
+  const aiName = LANGUAGES.find((l) => l.code === language)?.aiName ?? 'Korean'
+  return `\n\n## 답변 언어 (최우선)\n원칙 7의 친근한 톤은 유지하되 반드시 ${aiName}로 답하세요. 단 상품명, 브랜드명, 판매처명은 번역하지 말고 원문 그대로 두세요.`
+}
+
 // 자주 찜한 브랜드를 시스템 프롬프트에 추가할 텍스트로 변환
 const formatFavoriteBrands = (brands?: string[]): string => {
   if (!brands?.length) return ''
@@ -139,14 +146,23 @@ export const POST = async (req: Request) => {
     messages,
     profile,
     favoriteBrands,
-  }: { messages: UIMessage[]; profile?: Profile | null; favoriteBrands?: string[] } =
-    await req.json()
+    language,
+  }: {
+    messages: UIMessage[]
+    profile?: Profile | null
+    favoriteBrands?: string[]
+    language?: LanguageCode
+  } = await req.json()
 
   const modelMessages = await convertToModelMessages(messages)
 
   const result = streamText({
     model: google('gemini-flash-lite-latest'),
-    system: BASE_SYSTEM_PROMPT + formatProfile(profile) + formatFavoriteBrands(favoriteBrands),
+    system:
+      BASE_SYSTEM_PROMPT +
+      formatProfile(profile) +
+      formatFavoriteBrands(favoriteBrands) +
+      formatLanguage(language),
     messages: modelMessages,
     temperature: 0.7,
     tools: {

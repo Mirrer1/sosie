@@ -79,7 +79,7 @@ const stripFailedExchanges = (msgs: UIMessage[]): UIMessage[] => {
 const ChatRoot = () => {
   const { messages, sendMessage, setMessages, status, regenerate } = useChat()
   const { favorites } = useFavorites()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [input, setInput] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -111,9 +111,9 @@ const ChatRoot = () => {
     setImageFile(file)
   }
 
-  // 매 요청에 프로필과 찜 브랜드 첨부
+  // 매 요청에 프로필과 찜 브랜드, 선택 언어 첨부
   const buildRequestOptions = () => ({
-    body: { profile, favoriteBrands: topFavoriteBrands(favorites) },
+    body: { profile, favoriteBrands: topFavoriteBrands(favorites), language: lang },
   })
 
   // 입력 전송
