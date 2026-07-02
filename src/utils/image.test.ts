@@ -13,14 +13,12 @@ describe('validateImage', () => {
     expect(validateImage(makeFile('image/webp'))).toBeNull()
   })
 
-  it('허용하지 않는 형식이면 형식 에러 메시지', () => {
-    expect(validateImage(makeFile('image/gif'))).toBe('jpeg, png, webp 형식만 지원합니다')
+  it('허용하지 않는 형식이면 형식 에러 코드', () => {
+    expect(validateImage(makeFile('image/gif'))).toBe('type')
   })
 
-  it('5MB를 초과하면 용량 에러 메시지', () => {
-    expect(validateImage(makeFile('image/jpeg', MAX_IMAGE_SIZE + 1))).toBe(
-      '이미지는 5MB 이하만 가능합니다',
-    )
+  it('5MB를 초과하면 용량 에러 코드', () => {
+    expect(validateImage(makeFile('image/jpeg', MAX_IMAGE_SIZE + 1))).toBe('size')
   })
 
   it('정확히 5MB는 통과', () => {

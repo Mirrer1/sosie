@@ -22,6 +22,7 @@ import ProfileUpdatePrompt from '@/components/profile/ProfileUpdatePrompt'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useFavorites } from '@/providers/FavoritesProvider'
+import { useLanguage } from '@/providers/LanguageProvider'
 import { type Profile } from '@/types/profile'
 import { type SearchProductsOutput, type UpdateProfileOutput } from '@/types/tool'
 import { topFavoriteBrands } from '@/utils/favorites'
@@ -78,6 +79,7 @@ const stripFailedExchanges = (msgs: UIMessage[]): UIMessage[] => {
 const ChatRoot = () => {
   const { messages, sendMessage, setMessages, status, regenerate } = useChat()
   const { favorites } = useFavorites()
+  const { t } = useLanguage()
   const [input, setInput] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -103,7 +105,7 @@ const ChatRoot = () => {
   const acceptImage = (file: File) => {
     const error = validateImage(file)
     if (error) {
-      toast.error(error)
+      toast.error(t(error === 'type' ? 'image.errorType' : 'image.errorSize'))
       return
     }
     setImageFile(file)
@@ -403,12 +405,12 @@ const ChatRoot = () => {
                           <button
                             type="button"
                             onClick={() => setLightboxUrl(part.url)}
-                            aria-label="이미지 확대"
+                            aria-label={t('chat.imageZoom')}
                             className="block h-48 w-48 overflow-hidden rounded-2xl border transition-opacity hover:opacity-90"
                           >
                             <img
                               src={part.url}
-                              alt="첨부 이미지"
+                              alt={t('chat.attachedImage')}
                               className="h-full w-full object-cover"
                             />
                           </button>
@@ -488,7 +490,7 @@ const ChatRoot = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.15 }}
-            aria-label="맨 아래로"
+            aria-label={t('chat.scrollDown')}
             className="bg-background/90 hover:bg-accent absolute bottom-24 left-1/2 z-30 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur"
           >
             <ChevronDownIcon className="h-5 w-5" />
@@ -519,7 +521,7 @@ const ChatRoot = () => {
         <div className="bg-background/80 pointer-events-none absolute inset-0 z-40 flex items-center justify-center backdrop-blur-sm">
           <div className="border-primary text-primary flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-12 py-10">
             <ImageUpIcon className="h-12 w-12" />
-            <p className="text-sm font-medium">이미지를 여기에 놓으세요</p>
+            <p className="text-sm font-medium">{t('chat.dropImage')}</p>
           </div>
         </div>
       )}

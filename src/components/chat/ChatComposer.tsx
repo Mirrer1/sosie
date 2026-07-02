@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import ImageLightbox from '@/components/chat/ImageLightbox'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { useLanguage } from '@/providers/LanguageProvider'
 import { ALLOWED_IMAGE_TYPES, validateImage } from '@/utils/image'
 
 type ChatComposerProps = {
@@ -35,6 +36,7 @@ const ChatComposer = ({
   onSubmit,
   disabled = false,
 }: ChatComposerProps) => {
+  const { t } = useLanguage()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
 
@@ -45,7 +47,7 @@ const ChatComposer = ({
   const acceptImage = (file: File) => {
     const error = validateImage(file)
     if (error) {
-      toast.error(error)
+      toast.error(t(error === 'type' ? 'image.errorType' : 'image.errorSize'))
       return
     }
     onImageChange(file)
@@ -98,19 +100,19 @@ const ChatComposer = ({
               <button
                 type="button"
                 onClick={() => setIsLightboxOpen(true)}
-                aria-label="이미지 확대"
+                aria-label={t('chat.imageZoom')}
                 className="block h-20 w-20 overflow-hidden rounded-md border transition-opacity hover:opacity-80"
               >
                 <img
                   src={previewUrl}
-                  alt="첨부 이미지 미리보기"
+                  alt={t('chat.previewImage')}
                   className="h-full w-full object-cover"
                 />
               </button>
               <button
                 type="button"
                 onClick={() => onImageChange(null)}
-                aria-label="이미지 제거"
+                aria-label={t('chat.removeImage')}
                 className="bg-background absolute -top-2 -right-2 rounded-full border p-0.5"
               >
                 <XIcon className="h-3 w-3" />
@@ -123,7 +125,7 @@ const ChatComposer = ({
               size="icon"
               type="button"
               className="shrink-0"
-              aria-label="이미지 업로드"
+              aria-label={t('chat.uploadImage')}
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || !!imageFile}
             >
@@ -141,7 +143,7 @@ const ChatComposer = ({
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
-              placeholder="찾고 싶은 옷을 자유롭게 알려주세요"
+              placeholder={t('chat.placeholder')}
               className="min-h-0 flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
               rows={1}
               disabled={disabled}
@@ -149,7 +151,7 @@ const ChatComposer = ({
             <Button
               size="icon"
               className="shrink-0"
-              aria-label="보내기"
+              aria-label={t('chat.send')}
               onClick={onSubmit}
               disabled={disabled || (!value.trim() && !imageFile)}
             >

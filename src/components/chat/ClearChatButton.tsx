@@ -16,9 +16,11 @@ import {
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import useChatBusy from '@/hooks/useChatBusy'
+import { useLanguage } from '@/providers/LanguageProvider'
 
 // 대화 내역 초기화
 const ClearChatButton = () => {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const busy = useChatBusy()
 
@@ -41,24 +43,24 @@ const ClearChatButton = () => {
           render={
             <DialogTrigger
               render={
-                <Button variant="ghost" size="icon" aria-label="대화 지우기">
+                <Button variant="ghost" size="icon" aria-label={t('clearChat.label')}>
                   <EraserIcon className="h-[1.2rem] w-[1.2rem]" />
                 </Button>
               }
             />
           }
         />
-        <TooltipContent>대화 지우기</TooltipContent>
+        <TooltipContent>{t('clearChat.label')}</TooltipContent>
       </Tooltip>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>대화 지우기</DialogTitle>
-          <DialogDescription>현재 대화 내용을 모두 지웁니다. 되돌릴 수 없어요.</DialogDescription>
+          <DialogTitle>{t('clearChat.label')}</DialogTitle>
+          <DialogDescription>{t('clearChat.desc')}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <DialogClose render={<Button variant="ghost">취소</Button>} />
+          <DialogClose render={<Button variant="ghost">{t('clearChat.cancel')}</Button>} />
           <Button variant="destructive" onClick={handleConfirm}>
-            지우기
+            {t('clearChat.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
