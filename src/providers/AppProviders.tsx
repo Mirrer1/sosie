@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import ExchangeRateProvider from '@/providers/ExchangeRateProvider'
 import FavoritesProvider from '@/providers/FavoritesProvider'
 import LanguageProvider from '@/providers/LanguageProvider'
 import ThemeProvider from '@/providers/ThemeProvider'
@@ -11,10 +12,12 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <LanguageProvider>
-        <FavoritesProvider>
-          <TooltipProvider delay={300}>{children}</TooltipProvider>
-          <Toaster />
-        </FavoritesProvider>
+        <ExchangeRateProvider>
+          <FavoritesProvider>
+            <TooltipProvider delay={300}>{children}</TooltipProvider>
+            <Toaster />
+          </FavoritesProvider>
+        </ExchangeRateProvider>
       </LanguageProvider>
     </ThemeProvider>
   )

@@ -1,5 +1,6 @@
 'use client'
 
+import { useExchangeRate } from '@/providers/ExchangeRateProvider'
 import { useLanguage } from '@/providers/LanguageProvider'
 import { type MarketProduct } from '@/types/product'
 
@@ -11,6 +12,8 @@ type ProductCardProps = {
 // 단일 상품 카드
 const ProductCard = ({ product, onClick }: ProductCardProps) => {
   const { t } = useLanguage()
+  const { formatApprox } = useExchangeRate()
+  const approx = formatApprox(product.price)
 
   return (
     <button
@@ -31,6 +34,9 @@ const ProductCard = ({ product, onClick }: ProductCardProps) => {
         <p className="mt-auto text-sm font-semibold">
           {product.price.toLocaleString()}
           {t('currency.suffix')}
+          {approx && (
+            <span className="text-muted-foreground ml-1 text-xs font-normal">(≈ {approx})</span>
+          )}
         </p>
       </div>
     </button>

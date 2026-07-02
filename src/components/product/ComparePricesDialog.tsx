@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useExchangeRate } from '@/providers/ExchangeRateProvider'
 import { useLanguage } from '@/providers/LanguageProvider'
 import { type ComparePricesOutput } from '@/types/tool'
 
@@ -30,6 +31,7 @@ type ComparePricesDialogProps = {
 // 카드 클릭 시 열리는 판매처별 가격 비교 다이얼로그
 const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => {
   const { t } = useLanguage()
+  const { formatApprox } = useExchangeRate()
   const [sources, setSources] = useState<ComparePricesOutput['sources'] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -165,11 +167,19 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
                   <p className="text-sm font-semibold">
                     {s.price.toLocaleString()}
                     {t('currency.suffix')}
+                    {formatApprox(s.price) && (
+                      <span className="text-muted-foreground ml-1 text-xs font-normal">
+                        (≈ {formatApprox(s.price)})
+                      </span>
+                    )}
                   </p>
                   {lowestPrice !== undefined && s.price !== lowestPrice && (
                     <p className="text-muted-foreground text-xs">
                       +{(s.price - lowestPrice).toLocaleString()}
                       {t('currency.suffix')}
+                      {formatApprox(s.price - lowestPrice) && (
+                        <span className="ml-1">(≈ {formatApprox(s.price - lowestPrice)})</span>
+                      )}
                     </p>
                   )}
                 </div>
