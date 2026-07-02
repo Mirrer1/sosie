@@ -8,6 +8,7 @@ import ThemeProvider from '@/components/layout/ThemeProvider'
 import FavoritesProvider from '@/components/product/FavoritesProvider'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import LanguageProvider from '@/i18n/LanguageProvider'
 
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 
@@ -51,10 +52,12 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
     <html lang="ko" className={`${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex h-full flex-col overflow-hidden">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <FavoritesProvider>
-            <TooltipProvider delay={300}>{children}</TooltipProvider>
-            <Toaster />
-          </FavoritesProvider>
+          <LanguageProvider>
+            <FavoritesProvider>
+              <TooltipProvider delay={300}>{children}</TooltipProvider>
+              <Toaster />
+            </FavoritesProvider>
+          </LanguageProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
