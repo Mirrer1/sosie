@@ -3,8 +3,8 @@
 import { HeartIcon } from 'lucide-react'
 import { type MouseEvent } from 'react'
 
-import { useFavorites } from '@/components/product/FavoritesProvider'
 import { cn } from '@/lib/utils'
+import { useFavorites } from '@/providers/FavoritesProvider'
 import { type MarketProduct } from '@/types/product'
 
 type ProductFavoriteButtonProps = {

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 
-import { useFavorites } from '@/components/product/FavoritesProvider'
 import ProductGrid from '@/components/product/ProductGrid'
 import {
   Dialog,
@@ -12,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useFavorites } from '@/providers/FavoritesProvider'
 
 type FavoritesDialogProps = {
   open: boolean

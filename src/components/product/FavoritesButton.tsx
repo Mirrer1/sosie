@@ -4,9 +4,9 @@ import { HeartIcon } from 'lucide-react'
 import { useState } from 'react'
 
 import FavoritesDialog from '@/components/product/FavoritesDialog'
-import { useFavorites } from '@/components/product/FavoritesProvider'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useFavorites } from '@/providers/FavoritesProvider'
 
 // 개수 뱃지가 있는 헤더의 찜 목록 열기 버튼
 const FavoritesButton = () => {

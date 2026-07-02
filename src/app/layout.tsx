@@ -4,11 +4,7 @@ import type { Metadata } from 'next'
 import { Geist_Mono } from 'next/font/google'
 
 import './globals.css'
-import ThemeProvider from '@/components/layout/ThemeProvider'
-import FavoritesProvider from '@/components/product/FavoritesProvider'
-import { Toaster } from '@/components/ui/sonner'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import LanguageProvider from '@/i18n/LanguageProvider'
+import AppProviders from '@/providers/AppProviders'
 
 import 'pretendard/dist/web/variable/pretendardvariable.css'
 
@@ -51,14 +47,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <html lang="ko" className={`${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex h-full flex-col overflow-hidden">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <LanguageProvider>
-            <FavoritesProvider>
-              <TooltipProvider delay={300}>{children}</TooltipProvider>
-              <Toaster />
-            </FavoritesProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+        <AppProviders>{children}</AppProviders>
         <Analytics />
         <SpeedInsights />
       </body>
