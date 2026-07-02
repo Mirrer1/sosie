@@ -1,6 +1,6 @@
 import { type LanguageCode } from '@/i18n/languages'
 
-// 언어별 근사 환산에 사용할 대표 통화 (ko는 기준 통화라 제외)
+// 언어별 근사 환산에 쓸 대표 통화로 기준 통화인 ko는 제외
 export const CURRENCY_BY_LANGUAGE: Partial<Record<LanguageCode, string>> = {
   en: 'USD',
   ja: 'JPY',

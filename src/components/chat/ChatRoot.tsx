@@ -111,7 +111,7 @@ const ChatRoot = () => {
     setImageFile(file)
   }
 
-  // 매 요청에 프로필과 찜 브랜드, 선택 언어 첨부
+  // 매 요청에 프로필, 찜 브랜드, 선택 언어 첨부
   const buildRequestOptions = () => ({
     body: { profile, favoriteBrands: topFavoriteBrands(favorites), language: lang },
   })
