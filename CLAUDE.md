@@ -31,6 +31,7 @@
 - 🔧 개인화·검색 심화 — 프로필 styles 랭킹 반영, 동의어 맵 확장, 네이버 호출 병렬화, 상품명에서 브랜드 추출, 찜 브랜드 검색·랭킹 반영 + 브랜드당 개수 제한(ADR-013/014 업데이트), 프로필 변경 전 확인 카드(ADR-009 업데이트), AI 응답 중 일부 헤더 버튼 잠금
 - 🔧 가격비교 폴리시 — 브랜드·구별 단어 필터(ADR-012), 모달 대표 이미지·최저가 대비 차액·최저가 보러 가기 CTA·로딩 쉬머·가운데 스피너·순차 등장·다시 시도·재클릭 캐시(ADR-011 업데이트)
 - 🔧 검색 안정화·SEO — 예산 소프트 필터(빈 결과 방지)·네이버 호출 재시도·결과 부족 시 보강(ADR-014 업데이트), SEO 메타데이터·OG 이미지·robots·sitemap·콘솔 검증(ADR-015), 파비콘, 주석/커밋 컨벤션 정리
+- 🔧 다국어·가격 현지화 — 경량 커스텀 i18n(Context + 언어별 사전 + localStorage) 10개 언어로 UI 전환, 선택 언어를 매 요청에 실어 AI 답변 언어까지 반영, 프로바이더 폴더 분리, 가격 근사 환산 표기(ADR-016/017)
 
 **현재 모델**: `gemini-flash-lite-latest` (free tier 1500/day, 멀티모달, Tool Calling 모두 동작)
 **검색 풀**: 네이버 쇼핑 API + 무신사 입점 도메인 필터 (카탈로그 폐기). 결과 가공(노이즈/정확도 필터·재랭킹·동의어·가중 랜덤)은 ADR-014.
@@ -202,6 +203,8 @@ const handleSubmit = async () => {
 - 기능별 폴더로 분류 → `src/components/{기능}/` (`chat`, `product`, `profile`, `layout`)
 - shadcn UI → `src/components/ui/`
 - 단일 페이지 앱이라 페이지 전용 `_components/`는 쓰지 않고 전부 기능별 폴더로 통합
+- Context 프로바이더는 `src/providers/`에 모으고 `AppProviders`로 조립 (도메인 종속이라도 조립 지점을 한곳으로)
+- 다국어 리소스는 `src/i18n/` (`languages` 메타, `dictionaries` 사전, `currency` 매핑, `profileLabels` 값 매핑)
 
 ---
 
