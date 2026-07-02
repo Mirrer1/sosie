@@ -12,16 +12,21 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { BRAND_LABEL_KEYS, BUDGET_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
+import { Slider } from '@/components/ui/slider'
+import { BRAND_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
 import { cn } from '@/lib/utils'
+import { useExchangeRate } from '@/providers/ExchangeRateProvider'
 import { useLanguage } from '@/providers/LanguageProvider'
 import {
-  BUDGET_RANGES,
+  BUDGET_MAX,
+  BUDGET_MIN,
+  BUDGET_STEP,
   POPULAR_BRANDS,
   type Profile,
   SIZE_OPTIONS,
   STYLE_OPTIONS,
 } from '@/types/profile'
+import { formatBudgetParts } from '@/utils/budget'
 
 type OnboardingDialogProps = {
   open: boolean
@@ -39,6 +44,7 @@ const toggle = (arr: string[], v: string): string[] =>
 // 첫 진입 또는 헤더 버튼에서 호출되는 프로필 마법사
 const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingDialogProps) => {
   const { t } = useLanguage()
+  const { formatApprox } = useExchangeRate()
   const [step, setStep] = useState(1)
   const [styles, setStyles] = useState<string[]>(initialProfile?.styles ?? [])
   const [brands, setBrands] = useState<string[]>(initialProfile?.brands ?? [])
@@ -95,6 +101,22 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
     if (step === 3) setSize(undefined)
     handleNext()
   }
+
+  // 슬라이더 값을 예산 범위로 변환해 저장
+  const handleBudgetChange = (value: number | readonly number[]) => {
+    const [lo, hi] = Array.isArray(value) ? value : [value, value]
+    const min = lo > BUDGET_MIN ? lo : undefined
+    const max = hi < BUDGET_MAX ? hi : undefined
+    setBudget(min === undefined && max === undefined ? undefined : { min, max })
+  }
+
+  const budgetValue = [budget?.min ?? BUDGET_MIN, budget?.max ?? BUDGET_MAX]
+  const budgetParts = formatBudgetParts(budget, {
+    suffix: t('currency.suffix'),
+    orMore: t('budget.orMore'),
+    orLess: t('budget.orLess'),
+    formatApprox,
+  })
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -202,25 +224,32 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
           )}
 
           {step === 4 && (
-            <div className="flex flex-wrap gap-2">
-              {BUDGET_RANGES.map((r) => {
-                const selected = budget?.min === r.min && budget?.max === r.max
-                return (
-                  <button
-                    key={r.label}
-                    type="button"
-                    onClick={() => setBudget(selected ? undefined : { min: r.min, max: r.max })}
-                    className={cn(
-                      'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                      selected
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-card hover:bg-accent',
-                    )}
-                  >
-                    {t(BUDGET_LABEL_KEYS[r.min])}
-                  </button>
-                )
-              })}
+            <div className="space-y-5 px-1 py-2">
+              <div className="text-center">
+                <p className="text-sm font-medium">
+                  {budgetParts.main || t('onboarding.budgetAny')}
+                </p>
+                {budgetParts.approx && (
+                  <p className="text-muted-foreground text-xs">(≈ {budgetParts.approx})</p>
+                )}
+              </div>
+              <Slider
+                min={BUDGET_MIN}
+                max={BUDGET_MAX}
+                step={BUDGET_STEP}
+                value={budgetValue}
+                onValueChange={handleBudgetChange}
+              />
+              <div className="text-muted-foreground flex justify-between text-xs">
+                <span>
+                  {BUDGET_MIN.toLocaleString()}
+                  {t('currency.suffix')}
+                </span>
+                <span>
+                  {BUDGET_MAX.toLocaleString()}
+                  {t('currency.suffix')} {t('budget.orMore')}
+                </span>
+              </div>
             </div>
           )}
         </div>
