@@ -266,7 +266,7 @@
 - ✅ 검색 풀 확장 (5개 → 무신사 전체)
 - ✅ 단발성 대화가 누적되어 의미 있는 컨텍스트로 진화
 - ❌ 작업량 추가 (반나절+ — 프로필 schema/온보딩/Tool/system prompt/UI 전부 손)
-- ❌ AI가 자유 budget을 프리셋으로 매핑하면서 의도 일부 손실 (예: "20만원까지" → 15~30만)
+- ❌→해소: budget을 프리셋으로 매핑하며 의도 일부 손실되던 문제는 ADR-018 슬라이더 전환으로 해결
 - ❌ 자동 학습 신뢰도 한계 — 사용자 확인 단계 없이 즉시 반영 (V2 백로그)
 
 **대안 및 기각 이유**:
@@ -554,3 +554,29 @@
 - ❌ 언어→통화는 대표값 매핑이라 같은 언어의 다른 국가 통화는 미반영
 
 **구현 위치**: `src/i18n/currency.ts`(언어→통화·포맷), `src/utils/exchange.ts`(조회·캐시), `src/providers/ExchangeRateProvider.tsx`, 표시는 `ProductCard`·`ComparePricesDialog`
+
+---
+
+## ADR-018: 예산 입력 — 프리셋 칩에서 자유 범위 슬라이더로
+
+**상태**: Accepted (ADR-009 budget 정책 대체)
+
+**배경**: 온보딩 예산을 4개 프리셋 칩(5만 이하/5~15만/15~30만/30만 이상)으로만 받아, 사용자의 세밀한 범위를 담지 못하고 AI도 자유 금액을 가장 가까운 프리셋으로 올림·내림 매핑하며 의도가 일부 손실됐음.
+
+**결정**: 프리셋 칩을 0~100만(5만 단위) **듀얼 썸 슬라이더**로 교체. 스키마(`budget: { min?, max? }`)는 이미 자유 범위라 그대로 두고 그 위의 "프리셋 관습"만 제거.
+
+**이유**:
+- 데이터·검색은 처음부터 자유 범위 기반 — 프리셋은 UI 칩 표시용 관습일 뿐이라 걷어내도 검색 품질 무변화(`searchProducts`의 `priceMin/priceMax`는 원래 자유값)
+- 시스템 프롬프트 원칙 8-1을 "말한 금액 그대로 min/max"로 완화 → 예산 의도 손실 제거
+- 상단 끝(100만)까지 끌면 `max` 생략으로 "이상" 저장, 하한 0은 `min` 생략
+
+**표시**: 슬라이더 위 현재값을 금액 줄과 근사 환산 줄로 나눠 가운데 정렬 — 긴 통화 표기(일본어 등)가 옆으로 늘어지지 않게 두 줄로 분리. 근사 환산은 ADR-017 `formatApprox` 재사용.
+
+**정리**: 프리셋 상수·라벨(`BUDGET_RANGES`, `BUDGET_LABEL_KEYS`, `budget.under5~over30` 사전 키 10개 언어) 제거, 범위 표기용 `budget.orMore`·`budget.orLess`·`onboarding.budgetAny` 추가.
+
+**트레이드오프**:
+- ✅ 사용자 의도 그대로 반영, 세밀한 범위 입력
+- ✅ 스키마·검색 무변경이라 파급 최소, 기존 저장 프로필 그대로 호환
+- ❌ LLM이 극단값을 담을 여지 — 검색 소프트 필터(ADR-014)가 빈 결과 방지로 보정
+
+**구현 위치**: `src/types/profile.ts`(범위 상수), `src/utils/budget.ts`(범위 포맷), `src/components/ui/slider.tsx`, `src/components/profile/OnboardingDialog.tsx`, `ProfileUpdatePrompt.tsx`, 프롬프트는 `src/app/api/chat/route.ts`
