@@ -425,3 +425,4 @@ profileSchema = z.object({
 - [x] 자유 budget 입력 UI (0~100만 슬라이더) — ADR-018
 - [ ] `parseProductUrl` 결과 카드 시각화 (현재 텍스트만)
 - [ ] Flash Lite의 내부 tool_code 누출 케이스 — 마무리 단계에서 full `gemini-2.5-flash`로 교체 시도 (free tier 20/day 한도 주의)
+- [ ] **네이버 Search API → NCP NAVER API Hub 이관** — 개발자센터 대상 API가 2027-06-30에 전면 종료되어 기존 키 호출이 차단됨. 인증이 Client ID/Secret에서 NCP API Key 방식으로 바뀌므로 네이버 호출부 인증 로직 교체 필요. Search API는 이관 후에도 무료 유지. 기존 발급 키는 그때까지 동작하니 마감 한 달 전(2027-05경)까지 처리. 현재 키는 재발급하지 말 것 — 2026-07-31부터 개발자센터 신규 발급 중단.

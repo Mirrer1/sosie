@@ -36,6 +36,7 @@
 
 **현재 모델**: `gemini-flash-lite-latest` (free tier 1500/day, 멀티모달, Tool Calling 모두 동작)
 **검색 풀**: 네이버 쇼핑 API + 무신사 입점 도메인 필터 (카탈로그 폐기). 결과 가공(노이즈/정확도 필터·재랭킹·동의어·가중 랜덤)은 ADR-014.
+> ⚠ **네이버 API 이관 예정**: 네이버 Search API가 NCP NAVER API Hub로 이관됨. 개발자센터 대상 API는 2027-06-30 전면 종료(기존 키 차단), 인증이 Client ID/Secret → NCP API Key로 변경. Search API는 무료 유지. 현재 키 재발급 금지(2026-07-31부터 개발자센터 신규 발급 중단), 마감 전 인증부 이관 필요. 상세는 docs/AGENT.md 남은 작업.
 **프로필**: `sosie:profile` localStorage. schema는 `src/types/profile.ts`. 옵션 상수(스타일/브랜드/사이즈 프리셋, 예산 슬라이더 범위) 동일 파일에서 export.
 
 ### 컨셉 피벗 이력
