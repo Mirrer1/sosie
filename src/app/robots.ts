@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://sosie-theta.vercel.
 
 // 검색엔진 크롤링 규칙
 const robots = (): MetadataRoute.Robots => ({
-  rules: { userAgent: '*', allow: '/' },
+  rules: { userAgent: '*', allow: '/', disallow: ['/api/', '/go/'] },
   sitemap: `${SITE_URL}/sitemap.xml`,
 })
 

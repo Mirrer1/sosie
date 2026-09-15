@@ -4,95 +4,44 @@ import {
   cleanProductName,
   extractModelCodes,
   filterRelevantSources,
-  mapNaverResponse,
+  mapRowToSource,
+  pickCheapestPerSeller,
 } from './comparePrices'
+import { type ProductRow } from '@/types/catalog'
 
-const SAMPLE_RESPONSE = {
-  total: 2,
-  display: 2,
-  items: [
-    {
-      title: '<b>유니폼브릿지</b> 발마칸 코트',
-      link: 'https://www.musinsa.com/products/sample-1',
-      image: 'https://shopping-phinf.pstatic.net/sample-1.jpg',
-      lprice: '168000',
-      hprice: '',
-      mallName: '무신사',
-      productId: '1',
+describe('mapRowToSource', () => {
+  it('DB 행을 판매처 항목으로 변환하고 링크는 직링크 이동 경로로 연결', () => {
+    const source = mapRowToSource({
+      id: 'g/1',
       brand: '유니폼브릿지',
-    },
-    {
-      title: '유니폼브릿지 <b>발마칸</b> 코트 (공식몰)',
-      link: 'https://uniformbridge.com/products/sample-2',
-      image: '',
-      lprice: '150000',
-      hprice: '',
-      mallName: '유니폼브릿지 공식몰',
-      productId: '2',
-      brand: '유니폼브릿지',
-    },
-  ],
-}
+      name: '발마칸 코트',
+      price: 168000,
+      mall: '29CM',
+      image_url: 'https://encrypted-tbn1.gstatic.com/shopping?q=sample',
+    } as ProductRow)
 
-const PRODUCT_NAME = '유니폼브릿지 발마칸 코트'
-
-describe('mapNaverResponse', () => {
-  it('네이버 응답을 Sosie 스키마로 변환', () => {
-    const result = mapNaverResponse(SAMPLE_RESPONSE, PRODUCT_NAME)
-
-    expect(result.sources).toHaveLength(2)
-    expect(result.sources[0].seller).toBe('무신사')
-    expect(result.sources[0].price).toBe(168000)
+    expect(source).toEqual({
+      seller: '29CM',
+      price: 168000,
+      url: '/go/g%2F1',
+      imageUrl: 'https://encrypted-tbn1.gstatic.com/shopping?q=sample',
+      title: '유니폼브릿지 발마칸 코트',
+    })
   })
+})
 
-  it('HTML 태그 제거', () => {
-    const result = mapNaverResponse(SAMPLE_RESPONSE, PRODUCT_NAME)
+describe('pickCheapestPerSeller', () => {
+  it('판매처마다 가장 싼 항목만 남김', () => {
+    const result = pickCheapestPerSeller([
+      { seller: '무신사', price: 50000, url: '/go/1' },
+      { seller: '29CM', price: 48000, url: '/go/2' },
+      { seller: '무신사', price: 45000, url: '/go/3' },
+    ])
 
-    expect(result.sources[0].title).toBe('유니폼브릿지 발마칸 코트')
-    expect(result.sources[1].title).toBe('유니폼브릿지 발마칸 코트 (공식몰)')
-    expect(result.sources[0].title).not.toContain('<b>')
-  })
-
-  it('빈 이미지는 undefined로 변환', () => {
-    const result = mapNaverResponse(SAMPLE_RESPONSE, PRODUCT_NAME)
-
-    expect(result.sources[0].imageUrl).toBe('https://shopping-phinf.pstatic.net/sample-1.jpg')
-    expect(result.sources[1].imageUrl).toBeUndefined()
-  })
-
-  it('빈 items 배열은 빈 sources', () => {
-    const result = mapNaverResponse({ total: 0, display: 0, items: [] }, PRODUCT_NAME)
-
-    expect(result.sources).toHaveLength(0)
-  })
-
-  it('외부 mall 도메인은 link 그대로 유지', () => {
-    const result = mapNaverResponse(SAMPLE_RESPONSE, PRODUCT_NAME)
-
-    expect(result.sources[0].url).toBe('https://www.musinsa.com/products/sample-1')
-    expect(result.sources[1].url).toBe('https://uniformbridge.com/products/sample-2')
-  })
-
-  it('네이버 쇼핑 도메인은 검색 페이지로 우회', () => {
-    const response = {
-      total: 1,
-      display: 1,
-      items: [
-        {
-          title: '발마칸',
-          link: 'https://search.shopping.naver.com/catalog/12345',
-          image: '',
-          lprice: '100000',
-          hprice: '',
-          mallName: '무신사',
-          productId: '1',
-        },
-      ],
-    }
-    const result = mapNaverResponse(response, PRODUCT_NAME)
-
-    expect(result.sources[0].url).toContain('https://search.shopping.naver.com/search/all')
-    expect(result.sources[0].url).toContain(encodeURIComponent('유니폼브릿지 발마칸 코트 무신사'))
+    expect(result).toEqual([
+      { seller: '무신사', price: 45000, url: '/go/3' },
+      { seller: '29CM', price: 48000, url: '/go/2' },
+    ])
   })
 })
 
@@ -118,9 +67,9 @@ describe('cleanProductName', () => {
 
 describe('filterRelevantSources', () => {
   const sources = [
-    { seller: 'A', price: 100, url: 'https://a.com', title: '노이어 오간자 레이어드 발마칸 코트' },
-    { seller: 'B', price: 90, url: 'https://b.com', title: '노이어 발마칸 코트 브라운' },
-    { seller: 'C', price: 80, url: 'https://c.com', title: '무탠다드 청바지' },
+    { seller: 'A', price: 100, url: '/go/a', title: '노이어 오간자 레이어드 발마칸 코트' },
+    { seller: 'B', price: 90, url: '/go/b', title: '노이어 발마칸 코트 브라운' },
+    { seller: 'C', price: 80, url: '/go/c', title: '무탠다드 청바지' },
   ]
 
   it('토큰이 충분히 겹치는 판매처만 남김', () => {
@@ -129,49 +78,45 @@ describe('filterRelevantSources', () => {
     expect(result.map((s) => s.seller)).toEqual(['A', 'B'])
   })
 
-  it('전부 걸러지면 원본 유지', () => {
-    const onlyIrrelevant = [
-      { seller: 'C', price: 80, url: 'https://c.com', title: '무탠다드 청바지' },
-    ]
-    const result = filterRelevantSources(onlyIrrelevant, '노이어 오간자 레이어드 발마칸 코트')
+  it('전부 걸러지면 빈 배열', () => {
+    const onlyIrrelevant = [{ seller: 'C', price: 80, url: '/go/c', title: '무탠다드 청바지' }]
 
-    expect(result).toHaveLength(1)
-    expect(result[0].seller).toBe('C')
+    expect(filterRelevantSources(onlyIrrelevant, '노이어 오간자 레이어드 발마칸 코트')).toEqual([])
   })
 
   it('같은 브랜드라도 구별 단어가 부족한 다른 모델은 제외', () => {
     const product = '[더셔츠스튜디오] 아쿠아 블루 스몰체크 버튼다운 남방 TSS143'
-    const sources = [
+    const candidates = [
       {
-        seller: '네이버',
+        seller: '코오롱몰',
         price: 18970,
-        url: 'https://n.com',
+        url: '/go/n',
         title: '더셔츠스튜디오 남자 루즈핏 면 체크 버튼다운 캐주얼 셔츠 남방',
       },
       {
         seller: '29CM',
         price: 21800,
-        url: 'https://29.com',
+        url: '/go/29',
         title: '[더셔츠스튜디오] 아쿠아블루 스몰체크 버튼다운 남방',
       },
       {
-        seller: '네이버',
+        seller: 'W컨셉',
         price: 21800,
-        url: 'https://n2.com',
+        url: '/go/w',
         title: '더셔츠스튜디오 스몰체크 버튼다운 남방',
       },
     ]
-    const result = filterRelevantSources(sources, product, '더셔츠스튜디오')
+    const result = filterRelevantSources(candidates, product, '더셔츠스튜디오')
 
-    expect(result.map((s) => s.seller)).toEqual(['29CM', '네이버'])
+    expect(result.map((s) => s.seller)).toEqual(['29CM', 'W컨셉'])
   })
 
   it('다른 브랜드는 brand 인자로 제외', () => {
-    const sources = [
-      { seller: 'A', price: 100, url: 'https://a.com', title: '노이어 발마칸 코트' },
-      { seller: 'B', price: 90, url: 'https://b.com', title: '커버낫 발마칸 코트' },
+    const candidates = [
+      { seller: 'A', price: 100, url: '/go/a', title: '노이어 발마칸 코트' },
+      { seller: 'B', price: 90, url: '/go/b', title: '커버낫 발마칸 코트' },
     ]
-    const result = filterRelevantSources(sources, '노이어 발마칸 코트', '노이어')
+    const result = filterRelevantSources(candidates, '노이어 발마칸 코트', '노이어')
 
     expect(result.map((s) => s.seller)).toEqual(['A'])
   })
@@ -198,25 +143,25 @@ describe('filterRelevantSources - 브랜드/모델코드', () => {
     {
       seller: '무신사',
       price: 103200,
-      url: 'https://m.com',
+      url: '/go/m',
       title: '크리틱 RACING ZIP-UP KNIT NAVY CTCDDC004NV',
     },
     {
-      seller: 'G마켓',
+      seller: '29CM',
       price: 78360,
-      url: 'https://g.com',
+      url: '/go/29',
       title: '크리틱 RACING ZIP-UP KNIT SKY BLUE CTCDDC004SL',
     },
     {
       seller: '무신사',
       price: 109650,
-      url: 'https://m2.com',
+      url: '/go/m2',
       title: '크리틱 KWAIIIII RACING ZIP-UP KNIT BLUE CTCDEA003BL',
     },
     {
       seller: '타브랜드',
       price: 50000,
-      url: 'https://x.com',
+      url: '/go/x',
       title: '무탠다드 RACING ZIP-UP KNIT',
     },
   ]
@@ -235,10 +180,10 @@ describe('filterRelevantSources - 브랜드/모델코드', () => {
       {
         seller: '무신사',
         price: 103200,
-        url: 'https://m.com',
+        url: '/go/m',
         title: '크리틱 RACING ZIP-UP KNIT NAVY CTCDDC004NV',
       },
-      { seller: 'X', price: 1, url: 'https://x.com', title: 'RACING ZIP-UP KNIT NAVY CTCDDC004NV' },
+      { seller: 'X', price: 1, url: '/go/x', title: 'RACING ZIP-UP KNIT NAVY CTCDDC004NV' },
     ]
     const result = filterRelevantSources(mixed, PRODUCT)
 

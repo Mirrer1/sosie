@@ -58,7 +58,11 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
     fetch('/api/compare-prices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productName: product.name, brand: product.brand }),
+      body: JSON.stringify({
+        productId: product.id,
+        productName: product.name,
+        brand: product.brand,
+      }),
       signal: ctrl.signal,
     })
       .then(async (res) => {
@@ -90,6 +94,7 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
   const lowestPrice = lowestSource?.price
   const lowestPriceText =
     lowestPrice !== undefined ? `${lowestPrice.toLocaleString()}${t('currency.suffix')}` : ''
+  const isSingleSeller = !isLoading && !error && sortedSources?.length === 1
 
   return (
     <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
@@ -189,6 +194,10 @@ const ComparePricesDialog = ({ product, onClose }: ComparePricesDialogProps) => 
                 </Button>
               </motion.a>
             ))}
+
+          {isSingleSeller && (
+            <p className="text-muted-foreground pt-1 text-center text-xs">{t('compare.single')}</p>
+          )}
         </div>
 
         {lowestSource && (
