@@ -11,6 +11,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@/components/ui
 import { Skeleton } from '@/components/ui/skeleton'
 import useChatBusy from '@/hooks/useChatBusy'
 import { type DictKey } from '@/i18n/dictionaries'
+import { DEFAULT_LANGUAGE } from '@/i18n/languages'
 import { GENDER_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
 import { cn } from '@/lib/utils'
 import { useExchangeRate } from '@/providers/ExchangeRateProvider'
@@ -56,7 +57,7 @@ const slotClassName = (index: number) => (index >= MOBILE_SIMILAR_SLOTS ? 'hidde
 
 // 카드 클릭 시 AI 태그와 추천 이유, 구매 링크, 비슷한 상품을 고정 크기로 보여주는 미리보기
 const ProductPreviewDialog = ({ product, onSelect, onClose }: ProductPreviewDialogProps) => {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const { formatApprox } = useExchangeRate()
   const { favorites, isFavorite, toggleFavorite } = useFavorites()
   const busy = useChatBusy()
@@ -79,9 +80,9 @@ const ProductPreviewDialog = ({ product, onSelect, onClose }: ProductPreviewDial
           strong: true,
         })),
         ...[
-          product.subcategory,
-          ...(product.colors ?? []),
-          ...(product.materials ?? []),
+          ...(lang === DEFAULT_LANGUAGE
+            ? [product.subcategory, ...(product.colors ?? []), ...(product.materials ?? [])]
+            : []),
           product.gender && GENDER_LABEL_KEYS[product.gender]
             ? t(GENDER_LABEL_KEYS[product.gender])
             : undefined,
