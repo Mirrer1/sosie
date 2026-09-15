@@ -33,7 +33,7 @@ export const searchProductsInputSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      '기본 false (무신사 입점 상품만). true면 다른 몰(29CM, 공식몰 등)도 포함. 사용자가 명시적으로 더 보고 싶다고 했을 때만 true.',
+      '기본 false (무신사 상품만). true면 신뢰 판매처(29CM, W컨셉, 브랜드 공식몰 등)도 포함. 사용자가 명시적으로 더 보고 싶다고 했을 때만 true.',
     ),
 })
 
@@ -47,6 +47,10 @@ export type SearchProductsOutput = z.infer<typeof searchProductsOutputSchema>
 
 // comparePrices Tool 입력
 export const comparePricesInputSchema = z.object({
+  productId: z
+    .string()
+    .optional()
+    .describe('searchProducts 결과의 상품 id. 직전에 추천한 상품이면 반드시 넣으세요.'),
   productName: z.string().describe('상품명 (예: "유니폼브릿지 발마칸 싱글 코트")'),
   brand: z
     .string()
@@ -62,7 +66,7 @@ export const comparePricesOutputSchema = z.object({
     z.object({
       seller: z.string(),
       price: z.number().int().nonnegative(),
-      url: z.string().url(),
+      url: z.string(), // 직링크로 이동하는 내부 경로
       imageUrl: z.string().url().optional(),
       title: z.string().optional(),
     }),
