@@ -1,364 +1,85 @@
-# Sosie — AI 협업 컨텍스트
+# Sosie
 
-> Claude Code 등 AI 어시스턴트와 협업할 때 참조하는 컨텍스트.
-> 코드 규칙 / 작업 흐름 / Phase 순서 / 환경 변수.
+옷 사고 싶은데 뭐 살지 모를 때 취향에 맞는 옷을 같이 골라주는 **AI 패션 스타일리스트**.
 
----
+## 서비스 정체성
 
-## ⚠ Next.js 16 (Turbopack) 주의
-
-이 프로젝트는 **Next.js 16**을 사용합니다 — App Router 기반이지만 API/컨벤션/파일 구조가 14/15와 다를 수 있습니다. 코드 작성 전:
-
-- 모호하면 `node_modules/next/dist/docs/` 또는 https://nextjs.org/docs 확인
-- Tailwind는 **v4** (CSS 기반 설정, `tailwind.config.js` 없음)
-- Turbopack이 기본 dev/build 엔진
-
----
+- 이름: **Sosie(소지)** = 프랑스어 "닮은꼴". 트렌드의 닮은꼴이 아니라 **내 취향을 닮은 옷**을 골라준다는 뜻으로 쓴다
+- 한 줄 소개: "내 취향을 닮은 옷, 같이 골라드려요"
+- 핵심 루프: 프로필(스타일, 브랜드, 성별, 사이즈, 예산) → 검색 → 답변 → 대화 중 취향 단서로 프로필 갱신
+- 성격: 채용 지원용 포트폴리오. 방문자는 평가자 몇 명이라 첫인상(빠른 응답, 풍부한 결과)이 중요하다
+- 제약: 운영비 **0원**(Vercel Hobby, Neon Free, SerpApi Free, Gemini 무료 티어), 로그인 없음, 사용자 데이터는 localStorage
 
 ## 현재 상태
 
-**컨셉**: AI 패션 스타일리스트 — 사용자 프로필(스타일/브랜드/사이즈/예산) 기반으로 무신사 풀에서 골라주고, 대화 중 흘러나오는 취향은 `updateProfile` Tool로 자동 누적.
+라이브 배포까지 마친 단일 페이지 채팅 앱(`sosie-theta.vercel.app`). Gemini Streaming 채팅, Tool 3종(상품 검색, URL 파싱, 프로필 갱신), 이미지 입력, 온보딩 프로필과 대화 중 학습 확인 카드, 프로필과 찜 취향을 서버에서 반영하는 검색, AI 태그와 추천 이유와 비슷한 상품을 보여주는 상품 미리보기, 찜, 10개 언어와 가격 근사 환산, 다크 모드, SEO가 동작한다. 네이버 쇼핑 검색 API가 2026-07-31에 종료되어 상품 데이터는 SerpApi 구글 쇼핑을 매일 수집해 Gemini로 태깅한 Neon DB에서 검색하고, 구매 링크는 첫 클릭 때 직링크를 찾아 저장한다. 같은 상품이 여러 판매처에서 거의 수집되지 않아 가격비교 기능은 없앴다.
 
-- ✅ Phase 1 셋업 (Next.js 16 + AI SDK v6 + shadcn + Tailwind v4 + Vitest)
-- ✅ Phase 2 UI 베이스 (헤더 + 다크모드 + 채팅 홈)
-- ✅ Phase 3 채팅 코어 (Gemini Streaming + useChat + 마크다운 + 자동 스크롤)
-- ✅ Phase 4 Tool Calling — Tool 4개 완성 (`searchProducts`, `comparePrices`, `parseProductUrl`, `updateProfile`)
-- ✅ Phase 5 멀티모달 + 상품 카드 (이미지 입력 3종 + 라이트박스 + ProductGrid + ToolStatus)
-- ✅ Phase 6 부가 + 컨셉 피벗 (대화 히스토리 localStorage / 프로필 온보딩 + 수정 버튼 / 자동 학습 루프 / 카탈로그 폐기 / 카드 클릭 → 판매처 비교 모달)
-- ⏳ Phase 7 배포 + 문서 마무리 (Vercel 배포됨 https://sosie-theta.vercel.app, SEO·콘솔 등록 완료, 문서 마무리 중)
-- 🔧 포폴 폴리시 — 찜/북마크 기능, 가격비교 정확도 개선(모델코드·브랜드 필터), motion 등장 애니메이션, 스마트 자동 스크롤, 검색 실패/빈결과 UI, 컴포넌트 기능별 폴더 정리, 미니멀 스크롤바
-- 🔧 검색 품질·UX 폴리시 — searchProducts 필터/재랭킹/동의어/가중 랜덤(ADR-014), 프로필 수정 후 옛 예산으로 검색되던 버그 fix, temperature 0.7, 답변 형식(카드와 중복되는 상품 나열 제거), 버튼 호버 툴팁·커서, 웰컴 등장 애니메이션·예시 칩 개선
-- 🔧 개인화·검색 심화 — 프로필 styles 랭킹 반영, 동의어 맵 확장, 네이버 호출 병렬화, 상품명에서 브랜드 추출, 찜 브랜드 검색·랭킹 반영 + 브랜드당 개수 제한(ADR-013/014 업데이트), 프로필 변경 전 확인 카드(ADR-009 업데이트), AI 응답 중 일부 헤더 버튼 잠금
-- 🔧 가격비교 폴리시 — 브랜드·구별 단어 필터(ADR-012), 모달 대표 이미지·최저가 대비 차액·최저가 보러 가기 CTA·로딩 쉬머·가운데 스피너·순차 등장·다시 시도·재클릭 캐시(ADR-011 업데이트)
-- 🔧 검색 안정화·SEO — 예산 소프트 필터(빈 결과 방지)·네이버 호출 재시도·결과 부족 시 보강(ADR-014 업데이트), SEO 메타데이터·OG 이미지·robots·sitemap·콘솔 검증(ADR-015), 파비콘, 주석/커밋 컨벤션 정리
-- 🔧 다국어·가격 현지화 — 경량 커스텀 i18n(Context + 언어별 사전 + localStorage) 10개 언어로 UI 전환, 선택 언어를 매 요청에 실어 AI 답변 언어까지 반영, 프로바이더 폴더 분리, 가격 근사 환산 표기(ADR-016/017)
-- 🔧 예산·프로필 옵션 폴리시 — 예산 프리셋 칩을 0~100만 슬라이더로 전환하고 원칙 8-1을 자유 범위로 완화, 예산 표시를 금액과 근사 환산 두 줄로 분리(ADR-018), 기본 스타일에 클래식·고프코어 추가하고 포멀·나이키 제외
+## 문서 안내
 
-**현재 모델**: `gemini-flash-lite-latest` (free tier 1500/day, 멀티모달, Tool Calling 모두 동작)
-**검색 풀**: 네이버 쇼핑 API + 무신사 입점 도메인 필터 (카탈로그 폐기). 결과 가공(노이즈/정확도 필터·재랭킹·동의어·가중 랜덤)은 ADR-014.
-> ⚠ **네이버 API 이관 예정**: 네이버 Search API가 NCP NAVER API Hub로 이관됨. 개발자센터 대상 API는 2027-06-30 전면 종료(기존 키 차단), 인증이 Client ID/Secret → NCP API Key로 변경. Search API는 무료 유지. 현재 키 재발급 금지(2026-07-31부터 개발자센터 신규 발급 중단), 마감 전 인증부 이관 필요. 상세는 docs/AGENT.md 남은 작업.
-**프로필**: `sosie:profile` localStorage. schema는 `src/types/profile.ts`. 옵션 상수(스타일/브랜드/사이즈 프리셋, 예산 슬라이더 범위) 동일 파일에서 export.
+문서는 전부 `.claude/` 안에 있다.
 
-### 컨셉 피벗 이력
+| 위치                     | 내용                                     | 읽히는 시점              |
+| ------------------------ | ---------------------------------------- | ------------------------ |
+| `CLAUDE.md` (이 파일)    | 정체성, 현황, URL, 명령어, 기술 스택     | 항상                     |
+| `.claude/rules/code/`    | 코드 작성 규칙 (어떻게 짜나)             | 해당 파일을 다룰 때 자동 |
+| `.claude/rules/product/` | 영역별 설계 결정 (무엇을 왜 만들었나)    | 해당 파일을 다룰 때 자동 |
+| `.claude/history.md`     | 만든 순서대로의 작업 이력                | 필요할 때 직접 찾아봄    |
+| `.claude/skills/`        | `/update-docs` 작업 후 문서 갱신         | 호출할 때                |
 
-V1 ("닮은 옷 다 모아드려요" + 큐레이션 카탈로그 5개) → V2 ("내 취향을 닮은 옷, 같이 골라드려요" + 무신사 풀 + 프로필 루프)
+규칙 파일과 적용 범위:
 
-작업 7단계, 모두 완료:
-1. ✅ `searchProducts` Tool (네이버 쇼핑 무신사 필터) + `searchCatalog`/catalog.json 폐기
-2. ✅ 온보딩 모달 + 프로필 localStorage
-3. ✅ 시스템 프롬프트에 프로필 주입 + 톤 강화
-4. ✅ 헤더에 프로필 수정 버튼 (`EditProfileButton` + `sosie:open-profile` event)
-5. ✅ `updateProfile` Tool + 대화 중 자동 학습 루프 (`ChatRoot`의 `appliedProfileUpdates` ref)
-6. ✅ 문서 갱신 (README + docs/AGENT + docs/DECISIONS + 이 파일)
-7. ⏳ Vercel 배포
+| 파일                  | 적용 범위                                           | 내용                                             |
+| --------------------- | --------------------------------------------------- | ------------------------------------------------ |
+| `code/general.md`     | 항상                                                | Next 16 주의, 협업 방식, 주석, 명명, 위치, 커밋  |
+| `code/components.md`  | `*.tsx`                                             | 컴포넌트 구조, use client, useEffect, 이미지, 폼 |
+| `code/server.md`      | api, go 라우트, lib, scripts                        | Route Handler, Tool, DB 쿼리, 외부 API           |
+| `code/testing.md`     | `*.test.ts`, vitest 설정                            | Vitest 범위와 작성 방식                          |
+| `product/agent.md`    | chat 라우트, tools, tool 타입                       | 모델, Tool 구성, 시스템 프롬프트 원칙            |
+| `product/catalog.md`  | catalog, db, 검색 Tool, cron, go, scripts           | 데이터 소스, 수집, 검색 품질, 직링크             |
+| `product/profile.md`  | profile 컴포넌트, 프로필 타입과 유틸, updateProfile | 프로필 루프, 온보딩, 예산, 학습 확인             |
+| `product/shopping.md` | product 컴포넌트, 찜과 추천 이유 유틸, 비슷한 상품  | 상품 미리보기, 찜 취향 신호                      |
+| `product/chat.md`     | chat, layout 컴포넌트, hooks, page                  | localStorage 저장, 헤더 이벤트, 입력, 표시       |
+| `product/i18n.md`     | i18n, 언어와 환율 프로바이더와 유틸                 | 다국어 방식, 가격 근사 환산                      |
+| `product/seo.md`      | layout, OG 이미지, robots, sitemap, 아이콘          | 메타데이터, 소유권 검증, 카피                    |
 
-+ 카드 클릭 → 판매처 비교 모달 (ADR-011): `comparePrices` 핵심 로직을 `runComparePrices`로 추출해 Tool + `/api/compare-prices` 라우트가 공유. `ComparePricesDialog`는 가격 오름차순/최저가 뱃지/네이버 차단 URL 검색 페이지 우회 포함.
+작업을 마치면 `/update-docs` 스킬로 이력과 규칙을 갱신한다. 기존 기능을 고치기 전엔 `.claude/history.md`에서 해당 항목을 먼저 찾아본다.
 
-상세는 [`docs/DECISIONS.md`](docs/DECISIONS.md) ADR-009/010/011 참조.
+## URL 구조
 
----
+| URL                   | 내용                                        |
+| --------------------- | ------------------------------------------- |
+| `/`                   | 채팅 홈 (단일 페이지)                       |
+| `/api/chat`           | Gemini Streaming + Tool Calling             |
+| `/api/cron/collect`   | 매일 상품 수집 (Vercel Cron, 03시 KST)      |
+| `/api/products/[id]/similar` | 상품 미리보기의 비슷한 상품           |
+| `/go/[id]`            | 판매처 상품 페이지로 302 이동               |
+| `/robots.txt`, `/sitemap.xml`, `/opengraph-image` | SEO 파일 규약 |
 
-## 협업 규칙
+## 자주 쓰는 명령어
 
-1. 코드 변경 전 설명하고 승인받기. 임의 결정 X.
-2. 단계별로 진행. 한 번에 여러 기능 X.
-3. 짧고 핵심만 설명. 장황한 설명 지양.
-4. 사용자가 직접 실행할 것: 외부 계정 가입, 배포, 테스트 실행은 명령어/순서만 안내.
-5. JSX return 안에 변수 선언 금지 — return 위에서 미리 계산.
-6. 컴포넌트 내부 순서: 변수/state → 콜백(useCallback) → useEffect → return.
-7. **return은 1개만.** 조건부 렌더링은 early return X, 단일 return 안에서 삼항 연산자 또는 `&&`로 처리.
-8. 모든 컴포넌트는 **화살표 함수 + 하단 default export** 패턴.
-9. 이벤트 핸들러는 기본 콜백 추출(return 위). 예외(인라인 허용): 한 줄 + 단순 setter + 재사용 없음.
-10. 기본은 **서버 컴포넌트**. `"use client"`는 state/이벤트/브라우저 API 필요한 자식만 최소 단위로 분리.
-11. 막히면 질문 먼저.
-
----
-
-## 코드 스타일
-
-### return 1개 패턴
-
-❌ 나쁜 예:
-
-```tsx
-if (isLoading) return <Loading />
-if (error) return <Error />
-return <Content />
+```bash
+npm run dev                     # 개발 서버
+npm test                        # Vitest 단위 테스트
+npm run lint                    # ESLint
+npm run build                   # 프로덕션 빌드 (타입 검사 포함)
+npm run db:setup                # DB 테이블과 인덱스 생성
+npm run db:seed -- --limit=10   # 오래된 검색어부터 상품 수집 (SerpApi 크레딧 소모)
 ```
 
-✅ 좋은 예:
-
-```tsx
-return (
-  <>
-    {isLoading ? <Loading /> : error ? <Error /> : <Content />}
-  </>
-)
-```
-
-### 컴포넌트 패턴
-
-```tsx
-const MyComponent = () => {
-  return <div>...</div>
-}
-
-export default MyComponent
-```
-
-### 이벤트 핸들러
-
-✅ 단순 setter는 인라인 OK:
-
-```tsx
-<input onChange={(e) => setName(e.target.value)} />
-```
-
-✅ 복합 로직은 추출:
-
-```tsx
-const handleSubmit = async () => {
-  if (!name) return toast.error("필수")
-  await save(data)
-}
-```
-
-### "use client" 정책
-
-- 기본: 서버 컴포넌트
-- 조건 (셋 중 하나면 클라이언트로):
-  - useState/useReducer 등 state
-  - useEffect/onClick 등 이벤트
-  - 브라우저 API (window, localStorage 등)
-- 페이지는 서버, 인터랙션 자식만 클라이언트로 분리
-
-### useEffect 가이드
-
-**쓰지 말 것:**
-- 데이터 fetching → useChat / 서버 라우트
-- 파생 상태 계산 → 변수로 계산
-- 이벤트 처리 → 이벤트 핸들러에서
-
-**써야 할 때:**
-- DOM 직접 조작 (포커스, 스크롤)
-- localStorage 동기화
-- 이벤트 리스너 / 타이머 등록·해제
-
-### 메모이제이션
-
-- 기본: 사용 안 함
-- `useMemo`: 무거운 계산에만
-- `useCallback`: `memo`된 자식에 함수 넘길 때만
-- 성능 문제 측정 후 적용 (추측 X)
-
-### 폼
-
-- react-hook-form + zod
-- shadcn `Form` 컴포넌트
-- 로딩 → `formState.isSubmitting`
-
----
-
-## 주석 스타일
-
-| 위치 | 주석 |
-| ---- | ---- |
-| 인터페이스/타입 필드 | 필드 뒤 `// 한 줄` |
-| 컴포넌트/유틸/콜백/useEffect | 위에 `// 한 줄` |
-| state / 일반 변수 / JSX | 주석 X |
-
-**원칙:**
-- 한 문장으로 사실 위주 담백하게 (수식어·비유 X)
-- 두 절을 콤마로 잇지 말 것 → `~고`/`~며`/`~서`로 한 문장으로 묶거나 핵심만 남겨 포괄
-- 한글 단어 나열에 `·`/`/`/`+` 쓰지 말 것 → 포괄 단어 하나로, 정 없으면 `~와`/`과`, 그래도 없으면 콤마
-- `~지 않음` 부정형 풀어쓰기 대신 긍정 명사형으로 (예: "캐시에 남기지 않음" → "캐시에서 제외")
-- 영어 코드 식별자·약어는 그대로 둠
-- 괄호 부연설명 X
-- 특수문자 장식 X (`── ──`, `=` 등)
-- 다른 코드 관계/비교 언급 X
-- JSDoc(`/** */`) 사용 안 함
-
----
-
-## 파일/폴더/컴포넌트 명명
-
-### 파일
-
-- 컴포넌트: `PascalCase.tsx`
-- 훅: `useXxx.ts`
-- 유틸/타입: `camelCase.ts`
-- Next.js 특수 파일은 소문자 고정 (`page.tsx`, `layout.tsx`)
-
-### 폴더
-
-- 한 단어면 소문자, 합성 단어면 `camelCase`
-
-### 컴포넌트 스코프 접두어
-
-- 페이지/기능 종속 컴포넌트는 부모 스코프 접두어
-  - 채팅: `ChatMessage`, `ChatInput`, `ChatComposer`
-  - 상품: `ProductCard`, `ProductCompare`
-- 공용/shadcn 컴포넌트는 접두어 X
-
-### 컴포넌트 위치
-
-- 기능별 폴더로 분류 → `src/components/{기능}/` (`chat`, `product`, `profile`, `layout`)
-- shadcn UI → `src/components/ui/`
-- 단일 페이지 앱이라 페이지 전용 `_components/`는 쓰지 않고 전부 기능별 폴더로 통합
-- Context 프로바이더는 `src/providers/`에 모으고 `AppProviders`로 조립 (도메인 종속이라도 조립 지점을 한곳으로)
-- 다국어 리소스는 `src/i18n/` (`languages` 메타, `dictionaries` 사전, `currency` 매핑, `profileLabels` 값 매핑)
-
----
-
-## 타입 작성 위치
-
-- 공유 타입(상품, 메시지, Tool 응답 등) → `src/types/` 도메인별
-- 컴포넌트 Props / 작은 로컬 타입 → 그 컴포넌트 파일 안
-- 2~3곳 이상 반복되면 → `types/`로 올려 공통화
-
----
-
-## 상수 관리
-
-- 한 파일 내 3곳 이상 사용 → 파일 상단에 대문자 변수로 분리
-- 1~2곳이면 인라인 OK
-- 환경별 다른 값은 `.env`
-- 별도 `constants/` 폴더는 만들지 않음
-
----
-
-## 작업 흐름 (커밋 단위)
-
-**큰 틀:** 셋업 → UI 베이스 → 채팅 코어 → AI Agent + Tool → 입력 확장 → 부가 → 마감
-
-**작은 틀 (커밋 1단위):**
-
-1. **기능 구현**
-2. **테스트 방법 안내** — Vitest 단위 또는 화면 확인 명령어
-3. **화면 테스트 항목 안내** — 사용자가 확인할 리스트
-4. **문제 확인** — 사용자가 결과 알림
-5. **문제 있으면 수정** / **없으면 커밋명 추천**
-6. 커밋 후 다음 단위
-
----
-
-## 커밋 메시지 컨벤션
-
-- prefix(`feat:`/`fix:`/`refactor:`/`chore:`/`test:`/`style:`/`docs:`) + 한 개념으로 뭉뚱그린 한 구절
-- 여러 변경은 나열하지 말고 상위 개념 하나로 일반화 (덜 정확해도 OK)
-- `및`/`/`/`~와`/`과` 같이 둘을 붙이는 연결자 금지
-- `변경`·`수정` 같은 군더더기와 `을`/`를` 같은 조사는 빼서 간결하게
-- 예: `fix: 구경하기 버튼 로그인으로 연결`, `feat: 찜 기반 브랜드 개인화`
-
----
-
-## Git 전략 (1인 프로젝트라 단순화)
-
-- **브랜치**: `main` 하나만 사용
-- 이슈/PR 없음 — 커밋 컨벤션만 깔끔하게
-- 커밋 단위는 위 작업 흐름 따름
-
----
-
-## Phase별 작업 순서
-
-### Phase 1: 기반 셋업
-
-**외부 셋업 (사용자 직접):**
-- [ ] GitHub 레포 생성 (`sosie`)
-- [ ] Google AI Studio Gemini API 키 발급 (https://aistudio.google.com)
-- [ ] 네이버 개발자 센터 검색 API 등록 (Client ID/Secret)
-- [ ] Vercel 계정 + 프로젝트 연결
-
-**코드:**
-- [ ] `npx create-next-app@latest sosie --typescript --tailwind --app --eslint --src-dir`
-- [ ] Vercel AI SDK + Google provider 설치 (`ai`, `@ai-sdk/google`)
-- [ ] shadcn/ui 초기화 + 컴포넌트 추가
-- [ ] Prettier + Husky + lint-staged 셋업
-- [ ] `.env.local` + `.env.example` + `.gitignore` (_private/ 포함)
-- [ ] Pretendard 폰트
-- [ ] 다크모드 (next-themes)
-
-### Phase 2: UI 베이스
-
-- [ ] 디자인 시스템 (모노톤 + 포인트 1색)
-- [ ] 공용 컴포넌트 (Header, Footer, Container)
-- [ ] 랜딩 페이지 (헤더 + 히어로 + 채팅 진입 CTA)
-- [ ] 채팅 페이지 레이아웃
-
-### Phase 3: 채팅 코어
-
-- [ ] 채팅 메시지 UI
-- [ ] 채팅 입력 컴포저 (텍스트 먼저)
-- [ ] `/api/chat` Route Handler — Gemini Streaming
-- [ ] `useChat` 훅 연동
-- [ ] 일반 답변 작동 확인
-
-### Phase 4: 데이터 + Tool Calling
-
-- [ ] Zod 스키마 (`src/types/product.ts`, `src/types/tool.ts`, `src/types/profile.ts`)
-- [ ] `searchProducts` Tool (네이버 쇼핑 API + 무신사 입점 필터)
-- [ ] `comparePrices` Tool (네이버 API)
-- [ ] `parseProductUrl` Tool (OG 파싱)
-- [ ] `updateProfile` Tool (대화 중 프로필 누적)
-- [ ] AI Agent에 Tool 등록 (Vercel AI SDK `tool` API)
-- [ ] System Prompt 설계 (원칙 8개 + 시나리오 예시)
-- [ ] Tool 응답 → 최종 답변 흐름 검증
-
-### Phase 5: 멀티모달 + 상품 카드
-
-- [ ] 이미지 업로드 UI
-- [ ] 이미지 → base64 → Gemini (`analyzeImage` Tool)
-- [ ] `ProductCard` 컴포넌트
-- [ ] AI 답변 안에 카드 그리드 임베드
-- [ ] Agent 사고 과정 표시 (Tool 호출 단계 streaming UI)
-- [ ] URL 입력 모드 (시간 남으면)
-
-### Phase 6: 부가 + 마감
-
-- [ ] 대화 히스토리 localStorage 저장/복원
-- [ ] (선택) 찜/북마크
-- [ ] 다크모드 토글
-- [ ] Framer Motion 등장 애니메이션
-- [ ] 모바일/태블릿 반응형
-- [ ] (선택) Vitest 핵심 로직 테스트
-
-### Phase 7: 배포 + 문서
-
-- [ ] Vercel 환경변수 등록
-- [ ] Vercel 배포
-- [ ] (선택) 도메인 연결
-- [ ] README.md 마무리 (각 docs/* 링크 포함)
-
----
-
-## 환경 변수 (`.env.local` 예시)
-
-```env
-# Google AI Studio (Gemini)
-GOOGLE_GENERATIVE_AI_API_KEY=
-
-# 네이버 쇼핑 API
-NAVER_CLIENT_ID=
-NAVER_CLIENT_SECRET=
-
-# (선택) 배포용
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-**정책:**
-- `.env.local` gitignore
-- `.env.example` 키만 비워서 git에 올림 (참조용)
-
----
-
-## 다른 소스 참조
-
-- **Vercel AI SDK** (https://sdk.vercel.ai) — useChat, tool API, Streaming
-- **Google AI Studio** (https://aistudio.google.com) — Gemini API 문서
-- **네이버 개발자 센터** (https://developers.naver.com) — 쇼핑 검색 API
-- **shadcn/ui** (https://ui.shadcn.com) — 컴포넌트
-- **무신사** (https://www.musinsa.com) — 카탈로그 큐레이션 소스
-- **`docs/AGENT.md`** — Agent 설계 명세 + Tool 명세 + 데이터 소스
-- **`docs/DECISIONS.md`** — 주요 결정/트레이드오프 (ADR)
-- **`README.md`** — 평가자용 entry, 문제 정의 포함
+## 기술 스택
+
+| 영역        | 선택                                                          |
+| ----------- | ------------------------------------------------------------- |
+| 프레임워크  | Next.js 16 (App Router, Turbopack) + React 19                 |
+| 언어        | TypeScript                                                    |
+| LLM         | Gemini Flash Lite (`gemini-flash-lite-latest`)                |
+| AI 통합     | Vercel AI SDK v6 (useChat, Tool Calling, Streaming)           |
+| 상품 데이터 | SerpApi 구글 쇼핑 수집 + Gemini 태깅 + Neon Postgres(pg_trgm) |
+| 스케줄러    | Vercel Cron                                                   |
+| 스키마 검증 | Zod                                                           |
+| 스타일      | Tailwind CSS v4 + shadcn/ui (Base UI 기반)                    |
+| 모션        | Motion (`motion` 패키지)                                      |
+| 다크 모드   | next-themes                                                   |
+| 테스트      | Vitest                                                        |
+| 호스팅      | Vercel                                                        |
+| 코드 퀄리티 | ESLint + Prettier + Husky + lint-staged                       |
