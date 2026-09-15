@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
-import { BRAND_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
+import { BRAND_LABEL_KEYS, GENDER_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
 import { cn } from '@/lib/utils'
 import { useExchangeRate } from '@/providers/ExchangeRateProvider'
 import { useLanguage } from '@/providers/LanguageProvider'
@@ -21,6 +21,7 @@ import {
   BUDGET_MAX,
   BUDGET_MIN,
   BUDGET_STEP,
+  GENDER_OPTIONS,
   POPULAR_BRANDS,
   type Profile,
   SIZE_OPTIONS,
@@ -31,6 +32,7 @@ import { formatBudgetParts } from '@/utils/budget'
 type OnboardingDialogProps = {
   open: boolean
   initialProfile?: Profile | null
+  initialStep?: number // 열 때 바로 보여줄 단계
   onSave: (profile: Profile) => void
   onClose: () => void
 }
@@ -41,13 +43,20 @@ const TOTAL_STEPS = 4
 const toggle = (arr: string[], v: string): string[] =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]
 
-// 첫 진입 또는 헤더 버튼에서 호출되는 프로필 마법사
-const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingDialogProps) => {
+// 첫 진입, 헤더 버튼, 추천 이유 링크에서 호출되는 프로필 마법사
+const OnboardingDialog = ({
+  open,
+  initialProfile,
+  initialStep = 1,
+  onSave,
+  onClose,
+}: OnboardingDialogProps) => {
   const { t } = useLanguage()
   const { formatApprox } = useExchangeRate()
   const [step, setStep] = useState(1)
   const [styles, setStyles] = useState<string[]>(initialProfile?.styles ?? [])
   const [brands, setBrands] = useState<string[]>(initialProfile?.brands ?? [])
+  const [gender, setGender] = useState<Profile['gender']>(initialProfile?.gender)
   const [size, setSize] = useState<Profile['size']>(initialProfile?.size)
   const [budget, setBudget] = useState<Profile['budget']>(initialProfile?.budget)
   const [brandInput, setBrandInput] = useState('')
@@ -57,11 +66,12 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
     if (!open) return
     setStyles(initialProfile?.styles ?? [])
     setBrands(initialProfile?.brands ?? [])
+    setGender(initialProfile?.gender)
     setSize(initialProfile?.size)
     setBudget(initialProfile?.budget)
-    setStep(1)
+    setStep(initialStep)
     setBrandInput('')
-  }, [open, initialProfile])
+  }, [open, initialProfile, initialStep])
 
   // 자유 입력 브랜드 추가
   const addBrand = () => {
@@ -91,14 +101,17 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
 
   // 현재까지 고른 값으로 즉시 저장
   const handleSave = () => {
-    onSave({ styles, brands, size, budget })
+    onSave({ styles, brands, gender, size, budget })
   }
 
   // 이번 단계 값 비우고 다음
   const handleSkip = () => {
     if (step === 1) setStyles([])
     if (step === 2) setBrands([])
-    if (step === 3) setSize(undefined)
+    if (step === 3) {
+      setGender(undefined)
+      setSize(undefined)
+    }
     handleNext()
   }
 
@@ -204,22 +217,50 @@ const OnboardingDialog = ({ open, initialProfile, onSave, onClose }: OnboardingD
           )}
 
           {step === 3 && (
-            <div className="flex flex-wrap justify-center gap-2">
-              {SIZE_OPTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSize(size === s ? undefined : s)}
-                  className={cn(
-                    'rounded-full border px-4 py-1.5 text-sm transition-colors',
-                    size === s
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card hover:bg-accent',
-                  )}
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="space-y-5">
+              <div className="space-y-2 text-center">
+                <p className="text-muted-foreground text-xs font-medium">
+                  {t('onboarding.gender')}
+                </p>
+                <div className="flex justify-center gap-2">
+                  {GENDER_OPTIONS.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGender(gender === g ? undefined : g)}
+                      className={cn(
+                        'rounded-full border px-5 py-1.5 text-sm transition-colors',
+                        gender === g
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-card hover:bg-accent',
+                      )}
+                    >
+                      {t(GENDER_LABEL_KEYS[g])}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-muted-foreground text-xs">{t('onboarding.genderHint')}</p>
+              </div>
+              <div className="space-y-2 text-center">
+                <p className="text-muted-foreground text-xs font-medium">{t('onboarding.size')}</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {SIZE_OPTIONS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSize(size === s ? undefined : s)}
+                      className={cn(
+                        'rounded-full border px-4 py-1.5 text-sm transition-colors',
+                        size === s
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-card hover:bg-accent',
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

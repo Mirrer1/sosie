@@ -9,7 +9,7 @@ type ProductCardProps = {
   onClick: (product: MarketProduct) => void
 }
 
-// 단일 상품 카드
+// 클릭하면 상품 미리보기를 여는 단일 상품 카드
 const ProductCard = ({ product, onClick }: ProductCardProps) => {
   const { t } = useLanguage()
   const { formatApprox } = useExchangeRate()
@@ -19,7 +19,7 @@ const ProductCard = ({ product, onClick }: ProductCardProps) => {
     <button
       type="button"
       onClick={() => onClick(product)}
-      className="bg-card hover:bg-accent group flex h-full flex-col overflow-hidden rounded-lg border text-left transition-colors"
+      className="bg-card hover:bg-accent group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-lg border text-left transition-colors"
     >
       <div className="bg-muted aspect-square overflow-hidden">
         <img

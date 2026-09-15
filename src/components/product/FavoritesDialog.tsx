@@ -23,12 +23,12 @@ type FavoritesDialogProps = {
 const FavoritesDialog = ({ open, onOpenChange }: FavoritesDialogProps) => {
   const { favorites } = useFavorites()
   const { t } = useLanguage()
-  const [compareOpen, setCompareOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn('max-w-lg sm:max-w-lg', compareOpen && 'pointer-events-none opacity-0')}
+        className={cn('max-w-lg sm:max-w-lg', previewOpen && 'pointer-events-none opacity-0')}
       >
         <DialogHeader>
           <DialogTitle className="text-base">{t('favorites.title')}</DialogTitle>
@@ -36,7 +36,7 @@ const FavoritesDialog = ({ open, onOpenChange }: FavoritesDialogProps) => {
         </DialogHeader>
         <div className="-mr-2 max-h-[60vh] overflow-y-auto py-1 pr-2">
           {favorites.length > 0 ? (
-            <ProductGrid products={favorites} onCompareOpenChange={setCompareOpen} />
+            <ProductGrid products={favorites} onPreviewOpenChange={setPreviewOpen} />
           ) : (
             <p className="text-muted-foreground py-10 text-center text-sm">
               {t('favorites.empty')}

@@ -14,21 +14,26 @@ export const searchProductsInputSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      '사용자 선호 스타일 태그 (예: ["캐주얼", "미니멀"]). 프로필에 스타일이 있으면 그대로 넣으세요. 결과 정렬에만 쓰이고 검색을 좁히지 않습니다.',
+      '이번 요청에서 사용자가 말한 스타일 (예: ["스트릿"]). 생략하면 프로필 스타일이 자동 적용됩니다. 결과 정렬에만 쓰이고 검색을 좁히지 않습니다.',
     ),
-  brand: z.string().optional().describe('브랜드 (예: "무신사 스탠다드"). 사용자가 선호하면 지정.'),
+  brand: z
+    .string()
+    .optional()
+    .describe(
+      '이번 요청에서 사용자가 직접 말한 브랜드만 (예: "나이키 운동화" → "나이키"). 프로필 선호 브랜드는 넣지 마세요. 서버가 가산점으로 자동 반영합니다.',
+    ),
   priceMin: z
     .number()
     .int()
     .nonnegative()
     .optional()
-    .describe('최소 가격(원). 사용자 예산 하한이 있으면 지정.'),
+    .describe('최소 가격(원). 이번 요청에서 말한 예산이 있으면 지정. 생략하면 프로필 예산 적용.'),
   priceMax: z
     .number()
     .int()
     .nonnegative()
     .optional()
-    .describe('최대 가격(원). 사용자 예산 상한이 있으면 지정.'),
+    .describe('최대 가격(원). 이번 요청에서 말한 예산이 있으면 지정. 생략하면 프로필 예산 적용.'),
   includeOtherMalls: z
     .boolean()
     .optional()
@@ -44,37 +49,6 @@ export const searchProductsOutputSchema = z.object({
 
 export type SearchProductsInput = z.infer<typeof searchProductsInputSchema>
 export type SearchProductsOutput = z.infer<typeof searchProductsOutputSchema>
-
-// comparePrices Tool 입력
-export const comparePricesInputSchema = z.object({
-  productId: z
-    .string()
-    .optional()
-    .describe('searchProducts 결과의 상품 id. 직전에 추천한 상품이면 반드시 넣으세요.'),
-  productName: z.string().describe('상품명 (예: "유니폼브릿지 발마칸 싱글 코트")'),
-  brand: z
-    .string()
-    .optional()
-    .describe(
-      '상품 브랜드 (예: "유니폼브릿지"). 알면 넣으세요. 다른 브랜드 결과를 걸러 정확도를 높입니다.',
-    ),
-})
-
-// comparePrices Tool 출력
-export const comparePricesOutputSchema = z.object({
-  sources: z.array(
-    z.object({
-      seller: z.string(),
-      price: z.number().int().nonnegative(),
-      url: z.string(), // 직링크로 이동하는 내부 경로
-      imageUrl: z.string().url().optional(),
-      title: z.string().optional(),
-    }),
-  ),
-})
-
-export type ComparePricesInput = z.infer<typeof comparePricesInputSchema>
-export type ComparePricesOutput = z.infer<typeof comparePricesOutputSchema>
 
 // parseProductUrl Tool 입력
 export const parseProductUrlInputSchema = z.object({
@@ -97,6 +71,12 @@ export type ParseProductUrlOutput = z.infer<typeof parseProductUrlOutputSchema>
 export const updateProfileInputSchema = z.object({
   styles: z.array(z.string()).optional().describe('스타일 태그 (예: ["캐주얼", "미니멀"]).'),
   brands: z.array(z.string()).optional().describe('선호 브랜드 (예: ["무신사 스탠다드"]).'),
+  gender: z
+    .enum(['남성', '여성', '전체'])
+    .optional()
+    .describe(
+      '추천받을 상품 성별. "남자 옷 위주로" → "남성", "여자 옷" → "여성", "남녀 다 보여줘" → "전체"(성별 설정 해제).',
+    ),
   size: z.enum(['XS', 'S', 'M', 'L', 'XL']).optional(),
   budget: z
     .object({
@@ -123,6 +103,7 @@ export const updateProfileOutputSchema = z.object({
   updated: z.object({
     styles: z.array(z.string()).optional(),
     brands: z.array(z.string()).optional(),
+    gender: z.enum(['남성', '여성', '전체']).optional(), // 전체는 성별 설정 해제
     size: z.enum(['XS', 'S', 'M', 'L', 'XL']).optional(),
     budget: z
       .object({

@@ -79,9 +79,24 @@ const BRANDS = [
   '어반드레스',
 ]
 
-// 무신사 품목 검색어와 브랜드 검색어를 합친 수집 검색어 전체 목록
+const STYLES = [
+  '캐주얼',
+  '미니멀',
+  '스트릿',
+  '빈티지',
+  '베이직',
+  '스포티',
+  '아메카지',
+  '클래식',
+  '고프코어',
+]
+
+const STYLE_ITEMS = ['반팔티', '맨투맨', '팬츠']
+
+// 품목, 성별, 브랜드, 스타일 조합을 모두 무신사 검색어로 만든 수집 검색어 전체 목록
 export const COLLECT_QUERIES = [
   ...MUSINSA_ITEMS.map((item) => `무신사 ${item}`),
   ...GENDER_ITEMS.map((item) => `무신사 ${item}`),
-  ...BRANDS,
+  ...BRANDS.map((brand) => (brand.startsWith('무신사') ? brand : `무신사 ${brand}`)),
+  ...STYLES.flatMap((style) => STYLE_ITEMS.map((item) => `무신사 ${style} ${item}`)),
 ]

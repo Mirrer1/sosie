@@ -4,6 +4,7 @@ import { z } from 'zod'
 export const profileSchema = z.object({
   styles: z.array(z.string()).optional(),
   brands: z.array(z.string()).optional(),
+  gender: z.enum(['남성', '여성']).optional(), // 비우면 남녀 상품 모두
   size: z.enum(['XS', 'S', 'M', 'L', 'XL']).optional(),
   budget: z
     .object({
@@ -36,6 +37,8 @@ export const POPULAR_BRANDS = [
   '아이앱 스튜디오',
   '아디다스',
 ]
+
+export const GENDER_OPTIONS: Array<NonNullable<Profile['gender']>> = ['남성', '여성']
 
 export const SIZE_OPTIONS: Array<Profile['size']> = ['XS', 'S', 'M', 'L', 'XL']
 

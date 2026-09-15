@@ -13,7 +13,6 @@ type ToolStatusProps = {
 
 const TOOL_LABEL_KEYS: Record<string, DictKey> = {
   'tool-searchProducts': 'toolStatus.searchProducts',
-  'tool-comparePrices': 'toolStatus.comparePrices',
   'tool-parseProductUrl': 'toolStatus.parseProductUrl',
   'tool-updateProfile': 'toolStatus.updateProfile',
 }

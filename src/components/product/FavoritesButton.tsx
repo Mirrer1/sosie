@@ -1,7 +1,7 @@
 'use client'
 
 import { HeartIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import FavoritesDialog from '@/components/product/FavoritesDialog'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,13 @@ const FavoritesButton = () => {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const count = favorites.length
+
+  // 미리보기에서 채팅으로 질문을 보내면 찜 목록을 닫아 답변이 보이게 함
+  useEffect(() => {
+    const handler = () => setOpen(false)
+    window.addEventListener('sosie:ask', handler)
+    return () => window.removeEventListener('sosie:ask', handler)
+  }, [])
 
   return (
     <>

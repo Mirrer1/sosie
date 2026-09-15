@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type CandidateProduct,
   buildOutput,
+  buildPreferences,
   buildSearchKeywords,
   dedupeByName,
   expandKeywords,
@@ -10,6 +11,8 @@ import {
   matchesKeywords,
   matchesStyle,
   pickProducts,
+  pickStyles,
+  resolveSearchInput,
   scoreProduct,
   styleHints,
 } from './searchProducts'
@@ -57,6 +60,87 @@ describe('mapProductRow', () => {
     expect(product.productUrl).toBe('/go/g-001')
     expect(product.styles).toEqual(['캐주얼'])
     expect(product.searchText).toBe(SAMPLE_ROW.search_text)
+  })
+})
+
+describe('resolveSearchInput', () => {
+  const PROFILE = {
+    styles: ['캐주얼'],
+    brands: ['무신사 스탠다드'],
+    budget: { min: 30000, max: 70000 },
+  }
+
+  it('AI가 생략한 스타일과 예산을 프로필로 채움', () => {
+    const { input } = resolveSearchInput({ keywords: ['반팔티'] }, PROFILE)
+
+    expect(input.styles).toEqual(['캐주얼'])
+    expect(input.priceMin).toBe(30000)
+    expect(input.priceMax).toBe(70000)
+  })
+
+  it('이번 요청에 예산이나 스타일이 있으면 프로필보다 우선하고 예산은 섞지 않음', () => {
+    const { input } = resolveSearchInput(
+      { keywords: ['반팔티'], styles: ['스트릿'], priceMax: 20000 },
+      PROFILE,
+    )
+
+    expect(input.styles).toEqual(['스트릿'])
+    expect(input.priceMin).toBeUndefined()
+    expect(input.priceMax).toBe(20000)
+  })
+
+  it('성별 단어를 필터로 옮기고 키워드에서 뺌', () => {
+    const { input, gender } = resolveSearchInput({ keywords: ['여자', '원피스'] })
+
+    expect(gender).toBe('여성')
+    expect(input.keywords).toEqual(['원피스'])
+  })
+
+  it('검색어에 성별이 없으면 프로필 성별을 쓰고 검색어 성별이 있으면 우선', () => {
+    expect(resolveSearchInput({ keywords: ['셔츠'] }, { gender: '여성' }).gender).toBe('여성')
+    expect(resolveSearchInput({ keywords: ['남자', '셔츠'] }, { gender: '여성' }).gender).toBe(
+      '남성',
+    )
+    expect(resolveSearchInput({ keywords: ['셔츠'] }, {}).gender).toBeNull()
+  })
+
+  it('성별 단어만 있으면 키워드는 그대로 둠', () => {
+    const { input, gender } = resolveSearchInput({ keywords: ['남자'] })
+
+    expect(gender).toBe('남성')
+    expect(input.keywords).toEqual(['남자'])
+  })
+})
+
+describe('buildPreferences', () => {
+  it('프로필 브랜드와 찜 브랜드를 정규화해 중복 없이 합치고 찜 스타일과 가격대를 담음', () => {
+    const preferences = buildPreferences(
+      { brands: ['무신사 스탠다드'] },
+      {
+        count: 3,
+        brands: ['커버낫', '무신사스탠다드'],
+        styles: ['스트릿'],
+        priceRange: { min: 30000, max: 60000 },
+      },
+    )
+
+    expect(preferences).toEqual({
+      brands: ['무신사스탠다드', '커버낫'],
+      favoriteStyles: ['스트릿'],
+      favoritePriceRange: { min: 30000, max: 60000 },
+    })
+  })
+})
+
+describe('pickStyles', () => {
+  const PREFERENCES = { brands: [], favoriteStyles: ['빈티지'] }
+
+  it('요청이나 프로필 스타일이 있으면 그대로 사용', () => {
+    expect(pickStyles({ keywords: ['셔츠'], styles: ['캐주얼'] }, PREFERENCES)).toEqual(['캐주얼'])
+  })
+
+  it('스타일이 없으면 찜 스타일로 대체', () => {
+    expect(pickStyles({ keywords: ['셔츠'] }, PREFERENCES)).toEqual(['빈티지'])
   })
 })
 
@@ -188,11 +272,48 @@ describe('scoreProduct', () => {
     )
   })
 
-  it('자주 찜한 브랜드면 가산점', () => {
+  it('선호 브랜드와 정확히 같은 브랜드면 가산점', () => {
     const product = candidate({ name: '와이드 데님 팬츠', brand: '커버낫' })
     const input = { keywords: ['청바지', '데님'] }
 
-    expect(scoreProduct(product, input, ['커버낫'])).toBeGreaterThan(scoreProduct(product, input))
+    expect(
+      scoreProduct(product, input, { brands: ['커버낫'], favoriteStyles: [] }),
+    ).toBeGreaterThan(scoreProduct(product, input))
+  })
+
+  it('성별이 정해져 있으면 공용보다 정확히 같은 성별에 가산점', () => {
+    const preferences = { brands: [], favoriteStyles: [], gender: '여성' as const }
+    const women = candidate({ name: '셔츠', gender: '여성' })
+    const unisex = candidate({ name: '셔츠', gender: '공용' })
+
+    expect(scoreProduct(women, { keywords: ['셔츠'] }, preferences)).toBeGreaterThan(
+      scoreProduct(unisex, { keywords: ['셔츠'] }, preferences),
+    )
+  })
+
+  it('찜한 스타일과 겹치면 가산점', () => {
+    const product = candidate({ name: '데님 팬츠', styles: ['스트릿'] })
+    const input = { keywords: ['데님'] }
+
+    expect(
+      scoreProduct(product, input, { brands: [], favoriteStyles: ['스트릿'] }),
+    ).toBeGreaterThan(scoreProduct(product, input))
+  })
+
+  it('예산이 없을 때만 찜 가격대 안이면 가산점', () => {
+    const product = candidate({ name: '데님 팬츠', price: 50000 })
+    const preferences = {
+      brands: [],
+      favoriteStyles: [],
+      favoritePriceRange: { min: 40000, max: 60000 },
+    }
+
+    expect(scoreProduct(product, { keywords: ['데님'] }, preferences)).toBeGreaterThan(
+      scoreProduct(product, { keywords: ['데님'] }),
+    )
+    expect(scoreProduct(product, { keywords: ['데님'], priceMax: 100000 }, preferences)).toBe(
+      scoreProduct(product, { keywords: ['데님'], priceMax: 100000 }),
+    )
   })
 
   it('스타일 태그가 맞으면 가산점', () => {

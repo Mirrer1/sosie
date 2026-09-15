@@ -3,30 +3,30 @@
 import { motion } from 'motion/react'
 import { useState } from 'react'
 
-import ComparePricesDialog from '@/components/product/ComparePricesDialog'
 import ProductCard from '@/components/product/ProductCard'
 import ProductFavoriteButton from '@/components/product/ProductFavoriteButton'
+import ProductPreviewDialog from '@/components/product/ProductPreviewDialog'
 import { type MarketProduct } from '@/types/product'
 
 type ProductGridProps = {
   products: MarketProduct[]
-  onCompareOpenChange?: (open: boolean) => void
+  onPreviewOpenChange?: (open: boolean) => void
 }
 
 // 상품 카드 반응형 그리드
-const ProductGrid = ({ products, onCompareOpenChange }: ProductGridProps) => {
+const ProductGrid = ({ products, onPreviewOpenChange }: ProductGridProps) => {
   const [selected, setSelected] = useState<MarketProduct | null>(null)
 
-  // 가격비교 대상을 선택하고 부모에 열림 알림
+  // 미리보기 대상을 선택하고 부모에 열림 알림
   const handleSelect = (product: MarketProduct) => {
     setSelected(product)
-    onCompareOpenChange?.(true)
+    onPreviewOpenChange?.(true)
   }
 
-  // 가격비교를 닫고 부모에 닫힘 알림
-  const handleCompareClose = () => {
+  // 미리보기를 닫고 부모에 닫힘 알림
+  const handleClose = () => {
     setSelected(null)
-    onCompareOpenChange?.(false)
+    onPreviewOpenChange?.(false)
   }
 
   return (
@@ -45,7 +45,7 @@ const ProductGrid = ({ products, onCompareOpenChange }: ProductGridProps) => {
           </motion.div>
         ))}
       </div>
-      <ComparePricesDialog product={selected} onClose={handleCompareClose} />
+      <ProductPreviewDialog product={selected} onSelect={handleSelect} onClose={handleClose} />
     </>
   )
 }

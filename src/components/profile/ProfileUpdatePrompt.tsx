@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { type DictKey } from '@/i18n/dictionaries'
-import { BRAND_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
+import { BRAND_LABEL_KEYS, GENDER_LABEL_KEYS, STYLE_LABEL_KEYS } from '@/i18n/profileLabels'
 import { useExchangeRate } from '@/providers/ExchangeRateProvider'
 import { useLanguage } from '@/providers/LanguageProvider'
 import { type UpdateProfileOutput } from '@/types/tool'
@@ -31,6 +31,9 @@ const summarize = (
   if (updated.brands?.length) {
     const labels = updated.brands.map((b) => (BRAND_LABEL_KEYS[b] ? t(BRAND_LABEL_KEYS[b]) : b))
     parts.push(`${t('profileUpdate.brands')} ${labels.join(', ')}`)
+  }
+  if (updated.gender) {
+    parts.push(`${t('profileUpdate.gender')} ${t(GENDER_LABEL_KEYS[updated.gender])}`)
   }
   if (updated.size) parts.push(`${t('profileUpdate.size')} ${updated.size}`)
   if (updated.budget) {

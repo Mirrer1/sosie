@@ -14,6 +14,14 @@ export const STYLE_LABEL_KEYS: Record<string, DictKey> = {
   고프코어: 'style.gorpcore',
 }
 
+// 성별 저장값과 상품 성별 태그에 대응하는 사전 키
+export const GENDER_LABEL_KEYS: Record<string, DictKey> = {
+  남성: 'gender.male',
+  여성: 'gender.female',
+  공용: 'gender.unisex',
+  전체: 'gender.all',
+}
+
 // 프리셋 브랜드 저장값에 대응하는 사전 키
 export const BRAND_LABEL_KEYS: Record<string, DictKey> = {
   '무신사 스탠다드': 'brand.musinsaStandard',

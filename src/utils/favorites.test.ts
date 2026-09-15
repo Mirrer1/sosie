@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { loadFavorites, saveFavorites, topFavoriteBrands } from './favorites'
+import {
+  favoritePriceRange,
+  loadFavorites,
+  saveFavorites,
+  summarizeFavorites,
+  topFavoriteBrands,
+  topFavoriteStyles,
+} from './favorites'
 import { type MarketProduct } from '@/types/product'
 
 // 브랜드만 지정한 유효한 상품 객체 생성
@@ -51,6 +58,62 @@ describe('topFavoriteBrands', () => {
 
   it('빈 목록이면 빈 배열', () => {
     expect(topFavoriteBrands([])).toEqual([])
+  })
+})
+
+describe('topFavoriteStyles', () => {
+  it('찜이 3개 이상이면 두 번 이상 나온 스타일만 빈도순으로 반환', () => {
+    const favorites = [
+      { ...product('A', '1'), styles: ['스트릿', '캐주얼'] },
+      { ...product('B', '2'), styles: ['스트릿'] },
+      { ...product('C', '3'), styles: ['빈티지', '캐주얼'] },
+      { ...product('D', '4'), styles: ['스트릿', '미니멀'] },
+    ]
+
+    expect(topFavoriteStyles(favorites)).toEqual(['스트릿', '캐주얼'])
+  })
+
+  it('찜이 2개 이하면 한 번만 나온 스타일도 바로 반영', () => {
+    expect(topFavoriteStyles([{ ...product('A', '1'), styles: ['빈티지'] }])).toEqual(['빈티지'])
+  })
+
+  it('스타일 태그가 없는 옛 찜은 무시', () => {
+    expect(topFavoriteStyles([product('A', '1'), product('B', '2')])).toEqual([])
+  })
+})
+
+describe('favoritePriceRange', () => {
+  it('가격의 하위 25%와 상위 25% 지점을 천 원 단위로 반환', () => {
+    const favorites = [10000, 30000, 50000, 70000, 90000].map((price, i) => ({
+      ...product('A', String(i)),
+      price,
+    }))
+
+    expect(favoritePriceRange(favorites)).toEqual({ min: 30000, max: 70000 })
+  })
+
+  it('찜이 하나면 그 가격 앞뒤 30%를 가격대로 반환', () => {
+    expect(favoritePriceRange([product('A', '1')])).toEqual({ min: 35000, max: 65000 })
+  })
+
+  it('찜이 없으면 가격대 없음', () => {
+    expect(favoritePriceRange([])).toBeUndefined()
+  })
+})
+
+describe('summarizeFavorites', () => {
+  it('개수와 브랜드, 스타일, 가격대를 함께 요약', () => {
+    const favorites = [
+      { ...product('커버낫', '1'), styles: ['캐주얼'], price: 40000 },
+      { ...product('커버낫', '2'), styles: ['캐주얼'], price: 60000 },
+    ]
+
+    expect(summarizeFavorites(favorites)).toEqual({
+      count: 2,
+      brands: ['커버낫'],
+      styles: ['캐주얼'],
+      priceRange: { min: 40000, max: 60000 },
+    })
   })
 })
 

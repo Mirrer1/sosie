@@ -25,7 +25,7 @@ import { useFavorites } from '@/providers/FavoritesProvider'
 import { useLanguage } from '@/providers/LanguageProvider'
 import { type Profile } from '@/types/profile'
 import { type SearchProductsOutput, type UpdateProfileOutput } from '@/types/tool'
-import { topFavoriteBrands } from '@/utils/favorites'
+import { summarizeFavorites } from '@/utils/favorites'
 import { validateImage } from '@/utils/image'
 import { hasProfile, loadProfile, saveProfile } from '@/utils/profile'
 
@@ -45,6 +45,8 @@ const fileToDataUrl = (file: File): Promise<string> => {
 const mergeProfile = (base: Profile | null, output: UpdateProfileOutput): Profile => {
   const { updated, mode } = output
   const next: Profile = { ...(base ?? {}) }
+  if (updated.gender === '전체') delete next.gender
+  else if (updated.gender) next.gender = updated.gender
   if (mode === 'replace') {
     if (updated.styles !== undefined) next.styles = updated.styles
     if (updated.brands !== undefined) next.brands = updated.brands
@@ -111,9 +113,9 @@ const ChatRoot = () => {
     setImageFile(file)
   }
 
-  // 매 요청에 프로필, 찜 브랜드, 선택 언어 첨부
+  // 매 요청에 프로필, 찜 요약, 선택 언어 첨부
   const buildRequestOptions = () => ({
-    body: { profile, favoriteBrands: topFavoriteBrands(favorites), language: lang },
+    body: { profile, favorites: summarizeFavorites(favorites), language: lang },
   })
 
   // 입력 전송
@@ -247,6 +249,20 @@ const ChatRoot = () => {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('sosie:chat-busy', { detail: isLoading }))
   }, [isLoading])
+
+  // 상품 미리보기의 비슷한 스타일 요청을 채팅 메시지로 전송
+  useEffect(() => {
+    const handler = (e: Event) => handleExampleClick((e as CustomEvent<string>).detail)
+    window.addEventListener('sosie:ask', handler)
+    return () => window.removeEventListener('sosie:ask', handler)
+  })
+
+  // 상품 미리보기에서 프로필을 고치면 다음 요청에 최신 프로필을 싣도록 다시 읽음
+  useEffect(() => {
+    const handler = () => setProfile(loadProfile())
+    window.addEventListener('sosie:profile-changed', handler)
+    return () => window.removeEventListener('sosie:profile-changed', handler)
+  }, [])
 
   // 헤더의 프로필 수정 버튼에서 발생하는 이벤트 수신
   useEffect(() => {

@@ -2,10 +2,10 @@ import { google } from '@ai-sdk/google'
 import { type UIMessage, convertToModelMessages, stepCountIs, streamText } from 'ai'
 
 import { LANGUAGES, type LanguageCode } from '@/i18n/languages'
-import { comparePrices } from '@/lib/tools/comparePrices'
 import { parseProductUrl } from '@/lib/tools/parseProductUrl'
 import { createSearchProducts } from '@/lib/tools/searchProducts'
 import { updateProfile } from '@/lib/tools/updateProfile'
+import { type FavoriteSignals } from '@/types/favorites'
 import { type Profile } from '@/types/profile'
 
 export const maxDuration = 30
@@ -24,13 +24,16 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 
 **원칙 2: 사용자 프로필을 반드시 활용**
 - 시스템 메시지 끝에 사용자 프로필이 첨부되어 있을 수 있음 (스타일/선호 브랜드/사이즈/예산)
-- 프로필이 있으면 searchProducts 호출 시 brand·priceMin·priceMax·styles 자동 적용 (선호 스타일은 styles 배열로 그대로 전달)
+- 프로필의 스타일, 선호 브랜드, 성별, 예산은 searchProducts가 서버에서 자동으로 반영함. 인자로 다시 넣지 말 것
+- 사용자가 이번 요청에서 성별을 말하면("여자 원피스", "남자 셔츠") 그 단어를 keywords에 넣으면 프로필 성별보다 우선함
+- styles·priceMin·priceMax는 이번 요청에서 사용자가 다르게 말했을 때만 넣음 (예: "이번엔 스트릿으로", "3만원 이하로")
+- brand는 이번 요청에서 사용자가 직접 말한 브랜드만 넣음. 프로필 선호 브랜드를 brand에 넣으면 결과가 한 브랜드로 쏠림
 - 답변에는 "캐주얼 좋아하시니까", "예산 안에서 골라봤어요" 같이 프로필 근거를 짧게 한 줄 언급
 - 프로필이 없거나 부족해도 강제로 묻지 말 것
 
-**원칙 3: 가격 비교 요청은 comparePrices 호출**
-- "어디서 가장 싸?", "가격 비교해줘", "공식몰이랑 비교" 같은 질문엔 comparePrices Tool 호출
-- 직전 searchProducts 결과의 상품이면 그 상품의 id를 productId로 함께 전달
+**원칙 3: 가격 비교는 지원하지 않음**
+- "어디서 가장 싸?", "가격 비교해줘" 같은 질문엔 여러 판매처 가격 비교는 제공하지 않는다고 짧게 말하고, 카드를 누르면 판매처 상품 페이지로 바로 이동한다고 안내
+- 예산을 말하면 그 예산으로 searchProducts 다시 호출
 
 **원칙 4: 사용자가 URL을 보내면 parseProductUrl로 메타 정보 추출**
 - 메시지에 http(s):// URL이 포함되어 있으면 parseProductUrl Tool 호출
@@ -42,7 +45,7 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 - 별도 질문 없이 바로 진행
 
 **원칙 6: Tool 응답으로만 답변**
-- searchProducts/comparePrices/parseProductUrl 결과로 받은 데이터만 답변에 포함
+- searchProducts/parseProductUrl 결과로 받은 데이터만 답변에 포함
 - 가짜 상품, 가짜 가격, 가짜 판매처를 만들지 말 것
 - 결과가 빈 배열이면 "매칭되는 결과가 없어요. 다른 키워드로 찾아볼까요?" 같이 솔직히 안내
 
@@ -59,6 +62,7 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
   - "사실 빈티지도 좋아해" → styles에 "빈티지" 추가 (mode: merge)
   - "예산을 20만원까지로 늘려줘" → budget: { max: 200000 } (mode: merge)
   - "이제 무신사 스탠다드 말고 커버낫 위주로 보고싶어" → brands: ["커버낫"] (mode: replace)
+  - "나 남자야", "남자 옷 위주로 보여줘" → gender: "남성" / "남녀 다 보여줘" → gender: "전체" (mode: merge)
   - "사이즈 M으로 바꿔줘" → size: "M" (mode: merge)
 - 변경 필드만 담아 1회 호출. reason은 한 문장으로 근거
 - 반영 여부는 사용자가 확인 카드로 직접 결정함. 답변에서 "프로필에 반영했어요"처럼 단정하지 말고 "이런 취향도 반영해둘까요?"처럼 가볍게만 언급
@@ -74,17 +78,20 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 ## 예시
 
 사용자(프로필: 캐주얼, 무신사 스탠다드, 5~15만): "청바지 추천해줘"
-당신의 행동: searchProducts({ keywords: ["청바지", "데님"], styles: ["캐주얼"], brand: "무신사 스탠다드", priceMin: 50000, priceMax: 150000 }) 호출
+당신의 행동: searchProducts({ keywords: ["청바지", "데님"] }) 호출 (프로필은 서버가 자동 반영)
 답변: "캐주얼 스타일에 무신사 스탠다드 좋아하시니까, 와이드 데님 어때요? 예산 안에서 베이직하게 활용 좋은 거 골라봤어요."
 
-사용자(프로필 없음): "운동화 보여줘"
-당신의 행동: searchProducts({ keywords: ["운동화", "스니커즈"] }) 호출
+사용자(프로필: 캐주얼, 5~15만): "나이키 운동화 3만원 이하로"
+당신의 행동: searchProducts({ keywords: ["운동화", "스니커즈"], brand: "나이키", priceMax: 30000 }) 호출
+
+사용자(프로필 없음): "여자 원피스 보여줘"
+당신의 행동: searchProducts({ keywords: ["여자", "원피스"] }) 호출
 
 사용자: "다른 데서도 보여줘"
 당신의 행동: 직전 검색을 includeOtherMalls: true로 재호출
 
 사용자: "이거 어디서 가장 싸?"
-당신의 행동: 직전에 추천한 상품의 id와 상품명으로 comparePrices({ productId: "...", productName: "..." }) 호출
+당신의 행동: Tool 호출 X, "여러 판매처 가격 비교는 아직 지원하지 않아요. 카드를 누르면 판매처 상품 페이지에서 바로 확인할 수 있어요."
 
 사용자: "https://www.musinsa.com/products/12345 이거랑 비슷한 거"
 당신의 행동: parseProductUrl({ url }) → 추출된 정보로 searchProducts 추가 호출
@@ -107,6 +114,7 @@ const formatProfile = (profile?: Profile | null): string => {
   const lines: string[] = []
   if (profile.styles?.length) lines.push(`- 선호 스타일: ${profile.styles.join(', ')}`)
   if (profile.brands?.length) lines.push(`- 선호 브랜드: ${profile.brands.join(', ')}`)
+  if (profile.gender) lines.push(`- 추천 성별: ${profile.gender} 상품 (공용 포함)`)
   if (profile.size) lines.push(`- 사이즈: ${profile.size}`)
   if (profile.budget) {
     const min = profile.budget.min
@@ -122,7 +130,7 @@ const formatProfile = (profile?: Profile | null): string => {
     if (text) lines.push(`- 예산: ${text}`)
   }
   if (lines.length === 0) return ''
-  return `\n\n## 사용자 프로필 (최신 기준 · 항상 우선)\n${lines.join('\n')}\n\n이 프로필이 항상 최신 기준입니다. 이전 대화에서 searchProducts를 다른 예산·브랜드·사이즈로 호출했더라도, 지금부터는 그 옛 인자를 무시하고 반드시 위 프로필 값으로 검색하세요.`
+  return `\n\n## 사용자 프로필 (최신 기준 · 항상 우선)\n${lines.join('\n')}\n\n이 프로필이 항상 최신 기준이고 searchProducts가 서버에서 자동 반영합니다. 이전 대화에서 searchProducts를 다른 예산이나 브랜드로 호출했더라도 그 옛 인자를 복사하지 말고, 이번 메시지에서 사용자가 직접 말한 조건만 인자로 넣으세요.`
 }
 
 // 선택 언어를 답변 언어 지시로 변환
@@ -131,10 +139,18 @@ const formatLanguage = (language?: LanguageCode): string => {
   return `\n\n## 답변 언어 (최우선)\n원칙 7의 친근한 톤은 유지하되 반드시 ${aiName}로 답하세요. 단 상품명, 브랜드명, 판매처명은 번역하지 말고 원문 그대로 두세요.`
 }
 
-// 자주 찜한 브랜드를 시스템 프롬프트에 추가할 텍스트로 변환
-const formatFavoriteBrands = (brands?: string[]): string => {
-  if (!brands?.length) return ''
-  return `\n\n## 최근 자주 찜한 브랜드\n${brands.join(', ')}\n\n사용자가 실제로 저장한 브랜드입니다. 추천에 가볍게 참고하고 자연스럽게 한 줄로 언급해도 좋지만, 현재 요청 맥락과 프로필이 우선입니다.`
+// 찜 요약을 시스템 프롬프트에 추가할 텍스트로 변환
+const formatFavorites = (favorites?: FavoriteSignals | null): string => {
+  if (!favorites?.count) return ''
+  const lines: string[] = [`- 찜한 상품 수: ${favorites.count}개`]
+  if (favorites.brands.length) lines.push(`- 자주 찜한 브랜드: ${favorites.brands.join(', ')}`)
+  if (favorites.styles.length)
+    lines.push(`- 찜한 상품에 많은 스타일: ${favorites.styles.join(', ')}`)
+  if (favorites.priceRange) {
+    const { min, max } = favorites.priceRange
+    lines.push(`- 찜한 상품의 주요 가격대: ${min.toLocaleString()}원 ~ ${max.toLocaleString()}원`)
+  }
+  return `\n\n## 찜 목록에서 드러난 취향\n${lines.join('\n')}\n\n사용자가 실제로 저장한 상품에서 뽑은 취향이고 searchProducts가 가산점으로 자동 반영합니다. 인자로 넣지 말고, 답변에서 "찜하신 스트릿 무드랑 비슷해요"처럼 자연스럽게 한 줄로 언급해도 좋습니다. 현재 요청 맥락과 프로필이 우선입니다.`
 }
 
 // Tool Calling을 지원하는 Gemini Streaming 채팅 메시지 응답
@@ -142,12 +158,12 @@ export const POST = async (req: Request) => {
   const {
     messages,
     profile,
-    favoriteBrands,
+    favorites,
     language,
   }: {
     messages: UIMessage[]
     profile?: Profile | null
-    favoriteBrands?: string[]
+    favorites?: FavoriteSignals | null
     language?: LanguageCode
   } = await req.json()
 
@@ -158,13 +174,12 @@ export const POST = async (req: Request) => {
     system:
       BASE_SYSTEM_PROMPT +
       formatProfile(profile) +
-      formatFavoriteBrands(favoriteBrands) +
+      formatFavorites(favorites) +
       formatLanguage(language),
     messages: modelMessages,
     temperature: 0.7,
     tools: {
-      searchProducts: createSearchProducts(favoriteBrands),
-      comparePrices,
+      searchProducts: createSearchProducts({ profile, favorites }),
       parseProductUrl,
       updateProfile,
     },
