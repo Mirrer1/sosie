@@ -11,6 +11,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:setup": "tsx --env-file=.env.local scripts/setup-db.ts",
+    "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -18,6 +20,7 @@
     "@ai-sdk/react": "^3.0.200",
     "@base-ui/react": "^1.5.0",
     "@hookform/resolvers": "^5.4.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^6.0.198",
@@ -63,6 +66,7 @@
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8"
