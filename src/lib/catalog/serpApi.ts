@@ -1,6 +1,7 @@
 const SERPAPI_URL = 'https://serpapi.com/search.json'
 const SEARCH_TIMEOUT_MS = 120000
 const STORES_TIMEOUT_MS = 8000
+const WEB_TIMEOUT_MS = 15000
 const EMPTY_RESULT_ERROR = "Google hasn't returned any results"
 
 export type ShoppingResult = {
@@ -11,6 +12,12 @@ export type ShoppingResult = {
   source?: string
   product_link?: string
   immersive_product_page_token?: string
+}
+
+export type WebResult = {
+  link?: string
+  title?: string
+  snippet?: string
 }
 
 export type ImmersiveStore = {
@@ -52,4 +59,13 @@ export const fetchImmersiveStores = async (token: string): Promise<ImmersiveStor
     STORES_TIMEOUT_MS,
   )
   return json.product_results?.stores ?? []
+}
+
+// 한국 구글 웹검색 결과 조회
+export const searchGoogleWeb = async (query: string): Promise<WebResult[]> => {
+  const json = await requestSerpApi(
+    { engine: 'google', q: query, gl: 'kr', hl: 'ko', google_domain: 'google.co.kr' },
+    WEB_TIMEOUT_MS,
+  )
+  return json.organic_results ?? []
 }

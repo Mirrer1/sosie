@@ -6,6 +6,7 @@ type SupportedMall = {
   pattern: RegExp // 구글 쇼핑 판매처 표기 매칭 규칙
   domain: string // 상품 링크 도메인
   searchUrl: string // 사이트 검색 주소
+  productPath?: RegExp // 상품 상세 페이지 경로 규칙
 }
 
 // 사이트 검색 주소를 확인한 판매처 목록
@@ -15,12 +16,14 @@ const SUPPORTED_MALLS: SupportedMall[] = [
     pattern: /무신사|musinsa/i,
     domain: 'musinsa.com',
     searchUrl: 'https://www.musinsa.com/search/goods?keyword=',
+    productPath: /^\/products\/\d+/,
   },
   {
     name: '29CM',
     pattern: /29cm/i,
     domain: '29cm.co.kr',
     searchUrl: 'https://www.29cm.co.kr/store/search?keyword=',
+    productPath: /^\/(products|catalog)\/\d+/,
   },
   {
     name: 'W컨셉',
@@ -51,12 +54,14 @@ const SUPPORTED_MALLS: SupportedMall[] = [
     pattern: /kream/i,
     domain: 'kream.co.kr',
     searchUrl: 'https://kream.co.kr/search?keyword=',
+    productPath: /^\/products\/\d+/,
   },
   {
     name: 'Nike',
     pattern: /^nike(\.com)?$/i,
     domain: 'nike.com',
     searchUrl: 'https://www.nike.com/kr/w?q=',
+    productPath: /^\/kr\/t\//,
   },
   {
     name: 'adidas',
@@ -101,6 +106,9 @@ export const isMusinsaMall = (mall: string): boolean => normalizeMall(mall) === 
 // 지원 판매처 여부
 export const isSupportedMall = (mall: string): boolean => findMall(mall) !== undefined
 
+// 지원 판매처의 상품 링크 도메인
+export const mallDomain = (mall: string): string | null => findMall(mall)?.domain ?? null
+
 // 링크가 판매처 도메인인지 여부
 export const isMallUrl = (link: string, mall: string): boolean => {
   const info = findMall(mall)
@@ -113,28 +121,41 @@ export const isMallUrl = (link: string, mall: string): boolean => {
   }
 }
 
-// 무신사 앱 링크를 웹 상품 페이지로 변환하고 추적 파라미터 제거
+// 판매처 상품 상세 링크 여부
+export const isMallProductUrl = (link: string, mall: string): boolean => {
+  const rule = findMall(mall)?.productPath
+  return isMallUrl(link, mall) && (!rule || rule.test(new URL(link).pathname))
+}
+
+// 무신사 링크를 웹 상품 페이지로 바꾸고 추적 파라미터 제거
 export const toWebProductUrl = (link: string): string => {
   try {
     const url = new URL(link)
     url.searchParams.delete('srsltid')
-    const goods = url.hostname === 'link.musinsa.com' && url.pathname.match(/\/goods\/(\d+)/)
-    return goods ? `https://www.musinsa.com/products/${goods[1]}` : url.toString()
+    const isMusinsa = /(^|\.)musinsa\.com$/.test(url.hostname)
+    const goodsNo = isMusinsa
+      ? (url.pathname.match(/\/app\/goods\/(\d+)/)?.[1] ??
+        url.searchParams.get('goodsNo')?.match(/^\d+$/)?.[0])
+      : undefined
+    return goodsNo ? `https://www.musinsa.com/products/${goodsNo}` : url.toString()
   } catch {
     return link
   }
 }
 
 // 브랜드와 상품명을 판매처 검색어로 짧게 정리
-export const buildSearchKeyword = ({
-  brand,
-  name,
-  mall,
-}: {
-  brand: string
-  name: string
-  mall: string
-}): string => {
+export const buildSearchKeyword = (
+  {
+    brand,
+    name,
+    mall,
+  }: {
+    brand: string
+    name: string
+    mall: string
+  },
+  maxWords = MAX_SEARCH_WORDS,
+): string => {
   const cleanName = name
     .replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
     .replace(/\b\d+\s?colors?\b/gi, ' ')
@@ -147,7 +168,7 @@ export const buildSearchKeyword = ({
   const words = withBrand
     .split(/\s+/)
     .filter((word) => /[\p{L}\p{N}]/u.test(word))
-    .slice(0, MAX_SEARCH_WORDS)
+    .slice(0, maxWords)
   return words.length > 0 ? words.join(' ') : cleanBrand
 }
 

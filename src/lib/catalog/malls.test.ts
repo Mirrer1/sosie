@@ -65,6 +65,12 @@ describe('toWebProductUrl', () => {
     )
   })
 
+  it('무신사 웹의 옛 상품 경로도 상품 페이지로 변환', () => {
+    expect(toWebProductUrl('https://www.musinsa.com/app/goods/2110509')).toBe(
+      'https://www.musinsa.com/products/2110509',
+    )
+  })
+
   it('다른 몰 링크는 추적 파라미터만 제거', () => {
     expect(toWebProductUrl('https://www.kolonmall.com/Product/K1?srsltid=abc&x=1')).toBe(
       'https://www.kolonmall.com/Product/K1?x=1',
