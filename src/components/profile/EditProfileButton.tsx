@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import useChatBusy from '@/hooks/useChatBusy'
 import { useLanguage } from '@/providers/LanguageProvider'
 
-// 프로필 수정 열기
+// 프로필 수정 버튼
 const EditProfileButton = () => {
   const { t } = useLanguage()
   const busy = useChatBusy()

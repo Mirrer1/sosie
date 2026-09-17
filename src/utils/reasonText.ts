@@ -4,7 +4,7 @@ export type ReasonTextParts = {
   after: string
 }
 
-// 사전 문구의 대괄호 구간을 링크로 나누고 값 자리표시자를 채움
+// 사전 문구를 링크 구간으로 나누고 값 채우기
 export const splitReasonText = (template: string, value = ''): ReasonTextParts => {
   const filled = template.replace('{value}', value)
   const matched = filled.match(/^(.*?)\[(.+?)\](.*)$/)

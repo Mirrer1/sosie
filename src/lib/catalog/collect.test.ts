@@ -15,7 +15,6 @@ const SAMPLE_RESULT = {
 
 const SAMPLE_TAG: ProductTag = {
   isFashion: true,
-  mallTrusted: false,
   brand: '커버낫',
   name: '스몰 어센틱 맨투맨 Oatmeal',
   category: '상의',
@@ -56,19 +55,18 @@ describe('isNoiseTitle', () => {
 describe('shouldStore', () => {
   const item = mapShoppingResult(SAMPLE_RESULT)!
 
-  it('무신사 상품은 AI 신뢰 판단과 무관하게 저장', () => {
+  it('지원 판매처의 패션 상품이면 저장', () => {
     expect(shouldStore(item, SAMPLE_TAG)).toBe(true)
   })
 
-  it('패션 상품이 아니면 제외', () => {
+  it('패션 상품이 아니거나 노이즈 단어가 있으면 제외', () => {
     expect(shouldStore(item, { ...SAMPLE_TAG, isFashion: false })).toBe(false)
+    expect(shouldStore({ ...item, title: `${item.title} 중고` }, SAMPLE_TAG)).toBe(false)
   })
 
-  it('신뢰 목록 밖 판매처는 AI가 신뢰로 판단한 경우만 저장', () => {
-    const other = { ...item, mall: 'Goodwearmall' }
-
-    expect(shouldStore(other, SAMPLE_TAG)).toBe(false)
-    expect(shouldStore(other, { ...SAMPLE_TAG, mallTrusted: true })).toBe(true)
+  it('등록한 판매처만 저장하고 중고 플랫폼은 제외', () => {
+    expect(shouldStore({ ...item, mall: '29CM' }, SAMPLE_TAG)).toBe(true)
+    expect(shouldStore({ ...item, mall: '후루츠패밀리' }, SAMPLE_TAG)).toBe(false)
   })
 })
 

@@ -17,7 +17,7 @@ const TOOL_LABEL_KEYS: Record<string, DictKey> = {
   'tool-updateProfile': 'toolStatus.updateProfile',
 }
 
-// AI Agent의 Tool 호출 단계를 사용자에게 노출
+// Tool 호출 진행 상태 표시
 const ToolStatus = ({ toolType, state }: ToolStatusProps) => {
   const { t } = useLanguage()
   const labelKey = TOOL_LABEL_KEYS[toolType]

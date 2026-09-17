@@ -91,12 +91,27 @@ const STYLES = [
   '고프코어',
 ]
 
-const STYLE_ITEMS = ['반팔티', '맨투맨', '팬츠']
+const STYLE_ITEM_QUERIES = ['스트릿 맨투맨', '스포티 맨투맨', '아메카지 맨투맨', '클래식 팬츠']
 
-// 품목, 성별, 브랜드, 스타일 조합을 모두 무신사 검색어로 만든 수집 검색어 전체 목록
+const OTHER_MALL_QUERIES = [
+  '29CM 반팔티',
+  '29CM 원피스',
+  'W컨셉 원피스',
+  'KREAM 스니커즈',
+  '나이키 운동화',
+  '아디다스 운동화',
+  '노스페이스 자켓',
+  'SSF샵 셔츠',
+  '코오롱몰 자켓',
+  'ABC마트 운동화',
+]
+
+// 수집 검색어 전체 목록
 export const COLLECT_QUERIES = [
   ...MUSINSA_ITEMS.map((item) => `무신사 ${item}`),
   ...GENDER_ITEMS.map((item) => `무신사 ${item}`),
   ...BRANDS.map((brand) => (brand.startsWith('무신사') ? brand : `무신사 ${brand}`)),
-  ...STYLES.flatMap((style) => STYLE_ITEMS.map((item) => `무신사 ${style} ${item}`)),
+  ...STYLES.map((style) => `무신사 ${style}`),
+  ...STYLE_ITEM_QUERIES.map((item) => `무신사 ${item}`),
+  ...OTHER_MALL_QUERIES,
 ]

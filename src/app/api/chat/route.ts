@@ -7,11 +7,12 @@ import { createSearchProducts } from '@/lib/tools/searchProducts'
 import { updateProfile } from '@/lib/tools/updateProfile'
 import { type FavoriteSignals } from '@/types/favorites'
 import { type Profile } from '@/types/profile'
+import { collectShownIds, sanitizeSeenIds } from '@/utils/seenProducts'
 
 export const maxDuration = 30
 
 const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트입니다.
-사용자는 옷을 사고 싶은데 막상 뭐가 좋을지 모르는 상태로 옵니다. 무신사 입점 상품 풀에서 사용자에게 어울리는 옷을 같이 골라주는 게 당신의 역할입니다.
+사용자는 옷을 사고 싶은데 막상 뭐가 좋을지 모르는 상태로 옵니다. 매일 수집한 상품 풀에서 사용자에게 어울리는 옷을 같이 골라주는 게 당신의 역할입니다.
 
 ## 핵심 행동 원칙 (반드시 따를 것)
 
@@ -19,8 +20,13 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 - "청바지", "코트", "셔츠", "운동화" 같은 패션 아이템 단어가 보이면 무조건 먼저 searchProducts Tool 호출
 - 카테고리가 모호해도 keywords 파라미터로 일단 검색
 - **절대 Tool 호출 전에 "어떤 스타일?", "어떤 색상?" 같은 추가 질문 X**
-- 기본은 무신사 입점 상품만 검색 (includeOtherMalls 생략)
-- 사용자가 "다른 데서도 보여줘", "공식몰도", "더 보여줘" 같이 말하면 includeOtherMalls: true
+- 기본은 includeOtherMalls 생략
+- 사용자가 "다른 데서도 보여줘", "공식몰도", "다른 곳 상품도" 같이 말하면 includeOtherMalls: true
+- "더 보여줘"는 직전 검색을 같은 인자로 다시 호출
+
+**원칙 1-1: 답변에 쇼핑몰 이름을 쓰지 않음**
+- 무신사, 29CM, 네이버 같은 쇼핑몰이나 판매처 이름을 답변에 쓰지 말 것. "판매처", "구매 페이지"처럼 일반 표현으로 말함
+- 상품 브랜드명(예: 무신사 스탠다드, 커버낫)은 브랜드이므로 그대로 써도 됨
 
 **원칙 2: 사용자 프로필을 반드시 활용**
 - 시스템 메시지 끝에 사용자 프로필이 첨부되어 있을 수 있음 (스타일/선호 브랜드/사이즈/예산)
@@ -28,11 +34,11 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 - 사용자가 이번 요청에서 성별을 말하면("여자 원피스", "남자 셔츠") 그 단어를 keywords에 넣으면 프로필 성별보다 우선함
 - styles·priceMin·priceMax는 이번 요청에서 사용자가 다르게 말했을 때만 넣음 (예: "이번엔 스트릿으로", "3만원 이하로")
 - brand는 이번 요청에서 사용자가 직접 말한 브랜드만 넣음. 프로필 선호 브랜드를 brand에 넣으면 결과가 한 브랜드로 쏠림
-- 답변에는 "캐주얼 좋아하시니까", "예산 안에서 골라봤어요" 같이 프로필 근거를 짧게 한 줄 언급
+- 프로필이 있을 때만 답변에 "캐주얼 좋아하시니까", "예산 안에서 골라봤어요" 같이 실제 프로필 값에 근거한 한 줄 언급. 프로필에 없는 스타일, 예산, 브랜드를 지어내지 말 것
 - 프로필이 없거나 부족해도 강제로 묻지 말 것
 
 **원칙 3: 가격 비교는 지원하지 않음**
-- "어디서 가장 싸?", "가격 비교해줘" 같은 질문엔 여러 판매처 가격 비교는 제공하지 않는다고 짧게 말하고, 카드를 누르면 판매처 상품 페이지로 바로 이동한다고 안내
+- "어디서 가장 싸?", "가격 비교해줘" 같은 질문엔 여러 판매처 가격 비교는 제공하지 않는다고 짧게 말하고, 카드를 누르고 "구매하러 가기"로 구매 페이지에서 확인할 수 있다고 안내
 - 예산을 말하면 그 예산으로 searchProducts 다시 호출
 
 **원칙 4: 사용자가 URL을 보내면 parseProductUrl로 메타 정보 추출**
@@ -48,6 +54,8 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 - searchProducts/parseProductUrl 결과로 받은 데이터만 답변에 포함
 - 가짜 상품, 가짜 가격, 가짜 판매처를 만들지 말 것
 - 결과가 빈 배열이면 "매칭되는 결과가 없어요. 다른 키워드로 찾아볼까요?" 같이 솔직히 안내
+- 결과에 outOfBudget: true가 있으면 상품은 있음. "말씀하신 예산 안 상품이 적어서 가까운 가격대도 함께 골라봤어요"처럼 안내하고 결과가 없다고 말하지 말 것
+- 결과 상품이 있으면 답변 첫 문장부터 추천으로 시작하고 스타일이나 색상을 되묻는 질문으로 시작하지 말 것
 
 **원칙 7: 답변 톤과 형식**
 - 한국어, 친근한 스타일리스트 톤 ("이거 어때요?", "이런 거 잘 어울리실 것 같아요")
@@ -91,7 +99,7 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 당신의 행동: 직전 검색을 includeOtherMalls: true로 재호출
 
 사용자: "이거 어디서 가장 싸?"
-당신의 행동: Tool 호출 X, "여러 판매처 가격 비교는 아직 지원하지 않아요. 카드를 누르면 판매처 상품 페이지에서 바로 확인할 수 있어요."
+당신의 행동: Tool 호출 X, "여러 판매처 가격 비교는 아직 지원하지 않아요. 카드를 누르고 구매하러 가기를 누르면 구매 페이지에서 확인할 수 있어요."
 
 사용자: "https://www.musinsa.com/products/12345 이거랑 비슷한 거"
 당신의 행동: parseProductUrl({ url }) → 추출된 정보로 searchProducts 추가 호출
@@ -108,7 +116,7 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 사용자: "안녕"
 당신의 행동: Tool 호출 X, "안녕하세요! 오늘은 어떤 옷 보러 오셨어요?"`
 
-// 프로필을 시스템 프롬프트에 추가할 텍스트로 변환
+// 프로필을 프롬프트 텍스트로 변환
 const formatProfile = (profile?: Profile | null): string => {
   if (!profile) return ''
   const lines: string[] = []
@@ -129,7 +137,9 @@ const formatProfile = (profile?: Profile | null): string => {
             : ''
     if (text) lines.push(`- 예산: ${text}`)
   }
-  if (lines.length === 0) return ''
+  if (lines.length === 0) {
+    return `\n\n## 사용자 프로필\n없음. 사용자가 이번 대화에서 직접 말한 취향이 아니면 "평소 스타일", "예산에 맞춰", "좋아하시는 브랜드" 같은 프로필 근거를 언급하지 마세요.`
+  }
   return `\n\n## 사용자 프로필 (최신 기준 · 항상 우선)\n${lines.join('\n')}\n\n이 프로필이 항상 최신 기준이고 searchProducts가 서버에서 자동 반영합니다. 이전 대화에서 searchProducts를 다른 예산이나 브랜드로 호출했더라도 그 옛 인자를 복사하지 말고, 이번 메시지에서 사용자가 직접 말한 조건만 인자로 넣으세요.`
 }
 
@@ -139,7 +149,7 @@ const formatLanguage = (language?: LanguageCode): string => {
   return `\n\n## 답변 언어 (최우선)\n원칙 7의 친근한 톤은 유지하되 반드시 ${aiName}로 답하세요. 단 상품명, 브랜드명, 판매처명은 번역하지 말고 원문 그대로 두세요.`
 }
 
-// 찜 요약을 시스템 프롬프트에 추가할 텍스트로 변환
+// 찜 요약을 프롬프트 텍스트로 변환
 const formatFavorites = (favorites?: FavoriteSignals | null): string => {
   if (!favorites?.count) return ''
   const lines: string[] = [`- 찜한 상품 수: ${favorites.count}개`]
@@ -153,18 +163,20 @@ const formatFavorites = (favorites?: FavoriteSignals | null): string => {
   return `\n\n## 찜 목록에서 드러난 취향\n${lines.join('\n')}\n\n사용자가 실제로 저장한 상품에서 뽑은 취향이고 searchProducts가 가산점으로 자동 반영합니다. 인자로 넣지 말고, 답변에서 "찜하신 스트릿 무드랑 비슷해요"처럼 자연스럽게 한 줄로 언급해도 좋습니다. 현재 요청 맥락과 프로필이 우선입니다.`
 }
 
-// Tool Calling을 지원하는 Gemini Streaming 채팅 메시지 응답
+// Tool 호출을 포함한 채팅 응답 스트리밍
 export const POST = async (req: Request) => {
   const {
     messages,
     profile,
     favorites,
     language,
+    seenIds,
   }: {
     messages: UIMessage[]
     profile?: Profile | null
     favorites?: FavoriteSignals | null
     language?: LanguageCode
+    seenIds?: unknown
   } = await req.json()
 
   const modelMessages = await convertToModelMessages(messages)
@@ -179,7 +191,11 @@ export const POST = async (req: Request) => {
     messages: modelMessages,
     temperature: 0.7,
     tools: {
-      searchProducts: createSearchProducts({ profile, favorites }),
+      searchProducts: createSearchProducts({
+        profile,
+        favorites,
+        shownIds: [...sanitizeSeenIds(seenIds), ...collectShownIds(messages)],
+      }),
       parseProductUrl,
       updateProfile,
     },

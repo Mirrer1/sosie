@@ -7,11 +7,13 @@ import {
   buildSearchKeywords,
   dedupeByName,
   expandKeywords,
+  hasOutOfBudget,
   mapProductRow,
   matchesKeywords,
   matchesStyle,
   pickProducts,
   pickStyles,
+  pickWithOtherMalls,
   resolveSearchInput,
   scoreProduct,
   styleHints,
@@ -367,5 +369,104 @@ describe('pickProducts', () => {
 
     expect(picked).toHaveLength(5)
     expect(picked.slice(0, 3).filter((p) => p.brand === 'A')).toHaveLength(2)
+  })
+
+  const preferred = Array.from({ length: 3 }, (_, i) =>
+    candidate({ id: `v${i}`, brand: `빈티지브랜드${i}`, name: `v${i}`, styles: ['빈티지'] }),
+  )
+  const plain = Array.from({ length: 8 }, (_, i) =>
+    candidate({ id: `p${i}`, brand: `일반브랜드${i}`, name: `p${i}`, styles: ['캐주얼'] }),
+  )
+
+  it('선호 스타일 상품을 새 상품보다 먼저 채움', () => {
+    const picked = pickProducts([...plain, ...preferred], { styles: ['빈티지'] })
+
+    expect(picked.filter((p) => p.styles?.includes('빈티지'))).toHaveLength(3)
+  })
+
+  it('선호 브랜드 상품도 선호 스타일과 같은 우선순위로 채움', () => {
+    const brandItem = candidate({ id: 'c1', brand: '커버낫', name: 'c1', styles: ['캐주얼'] })
+    const picked = pickProducts([...plain, brandItem], { styles: ['빈티지'], brands: ['커버낫'] })
+
+    expect(picked.map((p) => p.id)).toContain('c1')
+  })
+
+  it('이미 본 선호 상품은 최대 2개만 다시 넣고 나머지는 새 상품으로 채움', () => {
+    const picked = pickProducts([...plain, ...preferred], {
+      styles: ['빈티지'],
+      shownIds: preferred.map((p) => p.id),
+    })
+
+    expect(picked).toHaveLength(6)
+    expect(picked.filter((p) => p.styles?.includes('빈티지'))).toHaveLength(2)
+  })
+})
+
+describe('buildOutput 이미 보여준 상품', () => {
+  const items = Array.from({ length: 8 }, (_, i) => candidate({ id: String(i), name: `데님 ${i}` }))
+
+  it('이미 보여준 상품을 풀 뒤로 보냄', () => {
+    const output = buildOutput(items, { keywords: ['데님'] }, undefined, ['0', '1'])
+    const ids = output.products.map((p) => p.id)
+
+    expect(ids).toHaveLength(8)
+    expect(ids.slice(-2).sort()).toEqual(['0', '1'])
+  })
+})
+
+describe('pickWithOtherMalls', () => {
+  const musinsa = Array.from({ length: 8 }, (_, i) =>
+    candidate({ id: `m${i}`, brand: `무신사브랜드${i}`, styles: ['캐주얼'] }),
+  )
+  const others = Array.from({ length: 4 }, (_, i) =>
+    candidate({ id: `o${i}`, brand: `다른브랜드${i}`, mall: '29CM' }),
+  )
+
+  it('다른 판매처 요청이면 스타일이 달라도 다른 판매처 상품을 최대 3개 포함', () => {
+    const picked = pickWithOtherMalls([...musinsa, ...others], { styles: ['캐주얼'] }, true)
+
+    expect(picked).toHaveLength(6)
+    expect(picked.filter((p) => p.mall !== '무신사')).toHaveLength(3)
+  })
+
+  it('다른 판매처 요청이 아니면 스타일 맞는 상품을 우선', () => {
+    const picked = pickWithOtherMalls([...musinsa, ...others], { styles: ['캐주얼'] }, false)
+
+    expect(picked.every((p) => p.mall === '무신사')).toBe(true)
+  })
+})
+
+describe('hasOutOfBudget', () => {
+  it('예산이 있고 예산 밖 상품이 섞이면 true', () => {
+    const products = [candidate({ price: 25000 }), candidate({ price: 45000 })]
+
+    expect(hasOutOfBudget(products, { keywords: ['운동화'], priceMax: 30000 })).toBe(true)
+    expect(hasOutOfBudget([products[0]], { keywords: ['운동화'], priceMax: 30000 })).toBe(false)
+  })
+
+  it('예산이 없으면 false', () => {
+    expect(hasOutOfBudget([candidate({ price: 450000 })], { keywords: ['운동화'] })).toBe(false)
+  })
+})
+
+describe('buildOutput 다른 판매처 요청', () => {
+  const musinsa = Array.from({ length: 40 }, (_, i) =>
+    candidate({ id: `m${i}`, name: `데님 팬츠 ${i}`, searchText: '데님팬츠데님' }),
+  )
+  const other = candidate({ id: 'o1', name: '다른 몰 청바지', mall: '29CM', searchText: '청바지' })
+
+  it('점수가 낮아도 다른 판매처 상품을 풀에 남김', () => {
+    const output = buildOutput([...musinsa, other], {
+      keywords: ['데님', '청바지'],
+      includeOtherMalls: true,
+    })
+
+    expect(output.products.map((p) => p.id)).toContain('o1')
+  })
+
+  it('다른 판매처 요청이 아니면 상위 풀만 남김', () => {
+    const output = buildOutput([...musinsa, other], { keywords: ['데님', '청바지'] })
+
+    expect(output.products).toHaveLength(30)
   })
 })

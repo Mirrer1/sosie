@@ -26,8 +26,7 @@ const MARKDOWN_COMPONENTS: Components = {
   h3: ({ children }) => <h3 className="mt-3 mb-2 text-sm font-semibold">{children}</h3>,
 }
 
-// 채팅 말풍선
-// assistant는 마크다운 렌더링
+// assistant 답변만 마크다운으로 렌더링하는 채팅 말풍선
 const ChatMessage = ({ role, content }: ChatMessageProps) => {
   const isUser = role === 'user'
 

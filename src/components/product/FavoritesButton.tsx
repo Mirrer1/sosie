@@ -9,14 +9,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useFavorites } from '@/providers/FavoritesProvider'
 import { useLanguage } from '@/providers/LanguageProvider'
 
-// 개수 뱃지가 있는 헤더의 찜 목록 열기 버튼
+// 개수 뱃지가 있는 찜 목록 버튼
 const FavoritesButton = () => {
   const { favorites } = useFavorites()
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const count = favorites.length
 
-  // 미리보기에서 채팅으로 질문을 보내면 찜 목록을 닫아 답변이 보이게 함
+  // 채팅으로 질문을 보내면 찜 목록 닫기
   useEffect(() => {
     const handler = () => setOpen(false)
     window.addEventListener('sosie:ask', handler)

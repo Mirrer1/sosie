@@ -38,13 +38,14 @@ export const searchProductsInputSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      '기본 false (무신사 상품만). true면 신뢰 판매처(29CM, W컨셉, 브랜드 공식몰 등)도 포함. 사용자가 명시적으로 더 보고 싶다고 했을 때만 true.',
+      '기본 false (무신사 상품만). true면 29CM, KREAM, 브랜드 공식몰 같은 다른 판매처도 포함. 사용자가 다른 곳 상품도 보고 싶다고 했을 때만 true.',
     ),
 })
 
 // searchProducts Tool 출력
 export const searchProductsOutputSchema = z.object({
   products: z.array(marketProductSchema),
+  outOfBudget: z.boolean().optional(), // 예산 밖 상품 포함 여부
 })
 
 export type SearchProductsInput = z.infer<typeof searchProductsInputSchema>

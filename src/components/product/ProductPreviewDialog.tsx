@@ -44,7 +44,7 @@ const REASON_LABEL_KEYS: Record<MatchReason['key'], DictKey> = {
   favoritePrice: 'reason.favoritePrice',
 }
 
-// 프로필 이유 링크가 여는 프로필 마법사 단계
+// 추천 이유별 프로필 마법사 단계
 const PROFILE_STEPS: Partial<Record<MatchReason['key'], number>> = {
   style: 1,
   brand: 2,
@@ -52,10 +52,10 @@ const PROFILE_STEPS: Partial<Record<MatchReason['key'], number>> = {
   budget: 4,
 }
 
-// 비슷한 상품 칸 중 모바일에서 넘치는 칸은 숨김
+// 모바일에서 넘치는 비슷한 상품 칸 숨김
 const slotClassName = (index: number) => (index >= MOBILE_SIMILAR_SLOTS ? 'hidden sm:block' : '')
 
-// 카드 클릭 시 AI 태그와 추천 이유, 구매 링크, 비슷한 상품을 고정 크기로 보여주는 미리보기
+// AI 태그, 추천 이유, 구매 링크, 비슷한 상품을 보여주는 고정 크기 미리보기
 const ProductPreviewDialog = ({ product, onSelect, onClose }: ProductPreviewDialogProps) => {
   const { t, lang } = useLanguage()
   const { formatApprox } = useExchangeRate()
@@ -123,7 +123,7 @@ const ProductPreviewDialog = ({ product, onSelect, onClose }: ProductPreviewDial
     if (product) toggleFavorite(product)
   }
 
-  // 추천 이유 링크를 누르면 프로필 해당 단계나 근거 찜 상품을 미리보기 위에 띄움
+  // 추천 이유 링크로 프로필 단계나 근거 찜 상품 열기
   const handleReasonClick = (reason: MatchReason) => {
     if (!product) return
     const step = PROFILE_STEPS[reason.key]
@@ -134,20 +134,20 @@ const ProductPreviewDialog = ({ product, onSelect, onClose }: ProductPreviewDial
     setReasonFavorites(favoritesForReason(reason, product, favorites, favoriteSignals.priceRange))
   }
 
-  // 링크로 연 프로필 마법사 저장 후 채팅에도 최신 프로필을 알림
+  // 프로필 저장 후 변경 이벤트 전달
   const handleProfileSave = (next: Profile) => {
     saveProfile(next)
     window.dispatchEvent(new CustomEvent('sosie:profile-changed'))
     setProfileEdit(null)
   }
 
-  // 근거 찜 상품을 누르면 찜 모달을 닫고 미리보기를 그 상품으로 전환
+  // 근거 찜 상품으로 미리보기 전환
   const handleReasonFavoriteSelect = (next: MarketProduct) => {
     setReasonFavorites(null)
     onSelect(next)
   }
 
-  // 이 상품 스타일로 더 찾아달라는 메시지를 채팅으로 보내고 닫기
+  // 이 스타일로 더 찾아달라고 채팅에 보내고 닫기
   const handleAsk = () => {
     if (!product || busy) return
     const text = t('preview.askMessage').replace('{name}', `${product.brand} ${product.name}`)
@@ -155,7 +155,7 @@ const ProductPreviewDialog = ({ product, onSelect, onClose }: ProductPreviewDial
     onClose()
   }
 
-  // 상품이 바뀌면 비슷한 상품을 조회하되 같은 상품은 캐시 재사용
+  // 상품이 바뀌면 비슷한 상품을 캐시 우선으로 조회
   useEffect(() => {
     if (!product) return
     const cached = cacheRef.current.get(product.id)

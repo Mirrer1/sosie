@@ -12,7 +12,6 @@ const tagSchema = z.object({
     z.object({
       index: z.number().int(),
       isFashion: z.boolean(),
-      mallTrusted: z.boolean(),
       brand: z.string(),
       name: z.string(),
       category: z.enum(PRODUCT_CATEGORIES),
@@ -39,7 +38,6 @@ const TAG_PROMPT = `너는 한국 패션 쇼핑 데이터 정리 담당이다. �
 규칙
 - index: 입력 번호 그대로
 - isFashion: 의류, 신발, 가방, 모자, 패션 액세서리면 true. 화장품, 생활용품, 중고, 렌탈, 도매, 부속품이면 false
-- mallTrusted: 판매처가 브랜드 공식몰, 백화점몰, 패션 전문 플랫폼이면 true. 오픈마켓 개인 셀러, 구매대행, 병행수입, 정체를 알 수 없는 개인몰이면 false
 - brand: 한국 쇼핑몰에서 흔히 쓰는 한글 브랜드명 (예: "커버낫", "나이키", "무신사 스탠다드"). 알 수 없으면 상품명 앞 단어
 - name: 상품명에서 브랜드 표기와 판매처 표기를 뺀 깔끔한 상품명. 모델코드와 색상은 유지
 - category: ${PRODUCT_CATEGORIES.join(', ')} 중 하나
@@ -49,7 +47,7 @@ const TAG_PROMPT = `너는 한국 패션 쇼핑 데이터 정리 담당이다. �
 - styles: ${STYLE_OPTIONS.join(', ')} 중 어울리는 것 0~3개
 - keywords: 사용자가 이 상품을 찾을 때 쓸 만한 한글 검색어 3~6개 (같은 뜻 표기, 계절, 핏 포함)`
 
-// 상품 목록을 Gemini로 한 번에 태깅하고 실패 항목은 결과에서 제외
+// 상품 목록을 Gemini로 한 번에 태깅
 export const tagProducts = async (inputs: TagInput[]): Promise<Map<number, ProductTag>> => {
   const list = inputs
     .map((item, index) => `${index}\t${item.title}\t${item.mall}\t${item.price}원`)

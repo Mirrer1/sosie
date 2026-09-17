@@ -20,7 +20,7 @@ type ProductReasonFavoritesDialogProps = {
   onClose: () => void
 }
 
-// 추천 이유 링크에서 열려 그 이유가 된 찜 상품만 미리보기 위에 보여주는 모달
+// 추천 이유의 근거가 된 찜 상품 모달
 const ProductReasonFavoritesDialog = ({
   products,
   onSelect,

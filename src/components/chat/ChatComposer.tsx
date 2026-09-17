@@ -40,7 +40,7 @@ const ChatComposer = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
 
-  // imageFile 변경 시 다시 만드는 첨부 이미지 미리보기 URL
+  // 첨부 이미지 미리보기 URL
   const previewUrl = useMemo(() => (imageFile ? URL.createObjectURL(imageFile) : null), [imageFile])
 
   // 이미지 검증 후 부모에게 전달

@@ -17,7 +17,7 @@ type ProfileUpdatePromptProps = {
 type Translate = (key: DictKey) => string
 type FormatApprox = (krw: number) => string | null
 
-// 변경 필드를 사람이 읽을 한 줄 요약으로 변환
+// 변경 필드를 한 줄 요약으로 변환
 const summarize = (
   updated: UpdateProfileOutput['updated'],
   t: Translate,
@@ -48,7 +48,7 @@ const summarize = (
   return parts.join(' · ')
 }
 
-// 대화 중 감지된 프로필 변경을 반영할지 확인하는 카드
+// 대화 중 감지한 프로필 변경 확인 카드
 const ProfileUpdatePrompt = ({ output, onApply, onDismiss }: ProfileUpdatePromptProps) => {
   const { t } = useLanguage()
   const { formatApprox } = useExchangeRate()

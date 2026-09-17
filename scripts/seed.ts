@@ -21,7 +21,7 @@ const collectWithRetry = async (query: string) => {
   }
 }
 
-// 무료 플랜 시간당 호출 한도에 맞춰 검색어를 하나씩 수집
+// 시간당 호출 한도에 맞춰 검색어를 하나씩 수집
 const main = async () => {
   const limitArg = process.argv.find((arg) => arg.startsWith('--limit='))
   const limit = limitArg ? Number(limitArg.split('=')[1]) : DEFAULT_LIMIT

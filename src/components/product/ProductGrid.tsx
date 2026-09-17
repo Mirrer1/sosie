@@ -17,13 +17,13 @@ type ProductGridProps = {
 const ProductGrid = ({ products, onPreviewOpenChange }: ProductGridProps) => {
   const [selected, setSelected] = useState<MarketProduct | null>(null)
 
-  // 미리보기 대상을 선택하고 부모에 열림 알림
+  // 미리보기 열기
   const handleSelect = (product: MarketProduct) => {
     setSelected(product)
     onPreviewOpenChange?.(true)
   }
 
-  // 미리보기를 닫고 부모에 닫힘 알림
+  // 미리보기 닫기
   const handleClose = () => {
     setSelected(null)
     onPreviewOpenChange?.(false)

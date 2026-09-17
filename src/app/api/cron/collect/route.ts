@@ -4,7 +4,7 @@ export const maxDuration = 300
 
 const DAILY_QUERY_COUNT = 4
 
-// Vercel Cron이 하루 한 번 호출해 오래된 검색어부터 수집하고 오래된 상품 정리
+// 매일 오래된 검색어부터 수집하고 오래된 상품 정리
 export const GET = async (req: Request) => {
   const secret = process.env.CRON_SECRET
   if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {

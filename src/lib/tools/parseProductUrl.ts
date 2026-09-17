@@ -11,7 +11,7 @@ type OgInput = {
   ogSiteName?: string
 }
 
-// open-graph-scraper 결과를 Sosie 스키마로 매핑
+// OG 파싱 결과를 Tool 출력으로 매핑
 export const mapOgResult = (result: OgInput, sourceUrl: string): ParseProductUrlOutput => {
   const imageUrl = result.ogImage?.[0]?.url
 

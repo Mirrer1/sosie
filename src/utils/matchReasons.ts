@@ -16,7 +16,7 @@ export type MatchReason =
 // 공백을 없애고 소문자로 정규화
 const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase()
 
-// 프로필의 스타일, 예산, 브랜드, 성별 중 상품이 맞는 이유
+// 상품이 프로필과 맞는 이유
 const profileReasons = (product: MarketProduct, profile?: Profile | null): MatchReason[] => {
   if (!profile) return []
   const reasons: MatchReason[] = []
@@ -44,7 +44,7 @@ const profileReasons = (product: MarketProduct, profile?: Profile | null): Match
   return reasons
 }
 
-// 찜 요약의 브랜드, 스타일, 가격대 중 상품이 맞는 이유로 프로필과 겹치는 내용은 제외
+// 프로필과 겹치지 않는 찜 기준 이유
 const favoriteReasons = (
   product: MarketProduct,
   profile?: Profile | null,
@@ -93,7 +93,7 @@ export const favoritesForReason = (
   return []
 }
 
-// 상품이 맞는 이유를 프로필 이유 먼저, 찜 이유 다음 순으로 최대 3개 추출
+// 프로필 이유를 먼저 두고 최대 3개 추출
 export const buildMatchReasons = (
   product: MarketProduct,
   profile?: Profile | null,

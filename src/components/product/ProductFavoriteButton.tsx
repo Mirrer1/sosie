@@ -12,13 +12,13 @@ type ProductFavoriteButtonProps = {
   product: MarketProduct
 }
 
-// 상품 카드 위에 올라가는 찜 토글 버튼
+// 카드 위 찜 토글 버튼
 const ProductFavoriteButton = ({ product }: ProductFavoriteButtonProps) => {
   const { isFavorite, toggleFavorite } = useFavorites()
   const { t } = useLanguage()
   const active = isFavorite(product.id)
 
-  // 카드 클릭과 분리하려 이벤트 전파 차단
+  // 카드 클릭으로 전파 차단
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     toggleFavorite(product)

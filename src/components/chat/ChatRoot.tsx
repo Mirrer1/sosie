@@ -28,6 +28,7 @@ import { type SearchProductsOutput, type UpdateProfileOutput } from '@/types/too
 import { summarizeFavorites } from '@/utils/favorites'
 import { validateImage } from '@/utils/image'
 import { hasProfile, loadProfile, saveProfile } from '@/utils/profile'
+import { addSeenIds, collectShownIds, loadSeenIds } from '@/utils/seenProducts'
 
 const STORAGE_KEY = 'sosie:messages'
 
@@ -63,7 +64,7 @@ const mergeProfile = (base: Profile | null, output: UpdateProfileOutput): Profil
   return next
 }
 
-// 도구 실패 시 교환 응답 제거
+// Tool 실패 응답과 직전 질문 제거
 const stripFailedExchanges = (msgs: UIMessage[]): UIMessage[] => {
   const failedIds = new Set<string>()
   msgs.forEach((msg, i) => {
@@ -113,9 +114,14 @@ const ChatRoot = () => {
     setImageFile(file)
   }
 
-  // 매 요청에 프로필, 찜 요약, 선택 언어 첨부
+  // 매 요청에 프로필, 찜 요약, 언어, 본 상품 첨부
   const buildRequestOptions = () => ({
-    body: { profile, favorites: summarizeFavorites(favorites), language: lang },
+    body: {
+      profile,
+      favorites: summarizeFavorites(favorites),
+      language: lang,
+      seenIds: loadSeenIds(),
+    },
   })
 
   // 입력 전송
@@ -169,7 +175,7 @@ const ChatRoot = () => {
     messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' })
   }
 
-  // 스크롤 위치로 맨 아래 근접 여부를 판단해 버튼 노출 토글
+  // 맨 아래 근접 여부로 아래로 가기 버튼 토글
   const handleScroll = () => {
     const el = scrollContainerRef.current
     if (!el) return
@@ -179,7 +185,7 @@ const ChatRoot = () => {
     setShowScrollDown(!atBottom)
   }
 
-  // 드래그 진입 시 Files 타입을 확인하고 counter 증가
+  // 파일 드래그 진입 시 counter 증가
   const handleDragEnter = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
     if (!Array.from(e.dataTransfer.types).includes('Files')) return
@@ -197,12 +203,12 @@ const ChatRoot = () => {
     }
   }
 
-  // drop 허용 위해 드래그 오버에서 preventDefault
+  // 드롭 허용
   const handleDragOver = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
   }
 
-  // 드롭 시 첫 파일을 가져와 검증
+  // 드롭한 첫 파일 검증
   const handleDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
     dragCounter.current = 0
@@ -211,15 +217,14 @@ const ChatRoot = () => {
     if (file) acceptImage(file)
   }
 
-  // 맨 아래 근처일 때 메시지나 상태 변경 시 자동 스크롤
+  // 맨 아래 근처면 새 메시지에 자동 스크롤
   useEffect(() => {
     if (isAtBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
     }
   }, [messages, status])
 
-  // 마운트 시 localStorage에서 대화 히스토리와 프로필 복원
-  // 첫 진입이면 온보딩
+  // 마운트 시 대화와 프로필을 복원하고 첫 진입이면 온보딩
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -250,21 +255,21 @@ const ChatRoot = () => {
     window.dispatchEvent(new CustomEvent('sosie:chat-busy', { detail: isLoading }))
   }, [isLoading])
 
-  // 상품 미리보기의 비슷한 스타일 요청을 채팅 메시지로 전송
+  // 미리보기에서 보낸 질문을 채팅으로 전송
   useEffect(() => {
     const handler = (e: Event) => handleExampleClick((e as CustomEvent<string>).detail)
     window.addEventListener('sosie:ask', handler)
     return () => window.removeEventListener('sosie:ask', handler)
   })
 
-  // 상품 미리보기에서 프로필을 고치면 다음 요청에 최신 프로필을 싣도록 다시 읽음
+  // 프로필 변경 이벤트로 프로필 다시 읽기
   useEffect(() => {
     const handler = () => setProfile(loadProfile())
     window.addEventListener('sosie:profile-changed', handler)
     return () => window.removeEventListener('sosie:profile-changed', handler)
   }, [])
 
-  // 헤더의 프로필 수정 버튼에서 발생하는 이벤트 수신
+  // 프로필 수정 이벤트로 마법사 열기
   useEffect(() => {
     const handler = () => setShowOnboarding(true)
     window.addEventListener('sosie:open-profile', handler)
@@ -284,7 +289,7 @@ const ChatRoot = () => {
     setShowOnboarding(false)
   }
 
-  // ClearChatButton 이벤트 수신
+  // 대화 지우기 이벤트로 채팅 초기화
   useEffect(() => {
     const handler = () => {
       setMessages([])
@@ -298,7 +303,7 @@ const ChatRoot = () => {
     return () => window.removeEventListener('sosie:clear-chat', handler)
   }, [setMessages])
 
-  // updateProfile Tool 결과를 감지해 즉시 반영 대신 확인 대기열에 추가
+  // updateProfile 결과를 확인 대기열에 추가
   useEffect(() => {
     for (const msg of messages) {
       if (msg.role !== 'assistant') continue
@@ -322,6 +327,12 @@ const ChatRoot = () => {
     }
   }, [messages])
 
+  // 응답이 끝나면 보여준 상품을 본 상품 기록에 저장
+  useEffect(() => {
+    if (isLoading) return
+    addSeenIds(collectShownIds(messages))
+  }, [messages, isLoading])
+
   // 확인 카드에서 반영 선택
   const handleApplyProfileUpdate = (key: string, output: UpdateProfileOutput) => {
     setProfile((prev) => {
@@ -337,7 +348,7 @@ const ChatRoot = () => {
     setPendingProfileUpdates((prev) => prev.filter((p) => p.key !== key))
   }
 
-  // 메시지 변경 시 실패 교환을 제외하고 localStorage에 자동 저장
+  // 실패 응답을 빼고 대화를 localStorage에 저장
   useEffect(() => {
     const toSave = stripFailedExchanges(messages)
     if (toSave.length === 0) {
@@ -347,7 +358,7 @@ const ChatRoot = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
     } catch {
-      // 저장 용량 초과 등은 무시
+      // 저장 실패는 무시
     }
   }, [messages])
 

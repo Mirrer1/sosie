@@ -9,7 +9,7 @@ type ProductCardProps = {
   onClick: (product: MarketProduct) => void
 }
 
-// 클릭하면 상품 미리보기를 여는 단일 상품 카드
+// 누르면 미리보기를 여는 상품 카드
 const ProductCard = ({ product, onClick }: ProductCardProps) => {
   const { t } = useLanguage()
   const { formatApprox } = useExchangeRate()

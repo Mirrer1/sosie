@@ -12,7 +12,7 @@ const REPEATED_STYLE_FROM = 3
 const SINGLE_PRICE_SPREAD = 0.3
 const PRICE_ROUND = 1000
 
-// 찜한 상품 스타일 태그를 빈도순으로 추출하되 찜이 3개 이상이면 한 번만 나온 스타일은 제외
+// 찜 상품 스타일을 빈도순으로 추출
 export const topFavoriteStyles = (
   favorites: MarketProduct[],
   limit = SIGNAL_STYLE_LIMIT,
@@ -29,7 +29,7 @@ export const topFavoriteStyles = (
     .map(([style]) => style)
 }
 
-// 찜한 상품 가격의 하위 25%와 상위 25% 지점을 주요 가격대로 계산하고 하나뿐이면 앞뒤 30%
+// 찜 상품의 주요 가격대 계산
 export const favoritePriceRange = (favorites: MarketProduct[]): FavoriteSignals['priceRange'] => {
   const prices = favorites
     .map((fav) => fav.price)
@@ -55,7 +55,7 @@ export const summarizeFavorites = (favorites: MarketProduct[]): FavoriteSignals 
   priceRange: favoritePriceRange(favorites),
 })
 
-// 찜 목록에서 자주 찜한 브랜드를 빈도순으로 추출
+// 자주 찜한 브랜드를 빈도순으로 추출
 export const topFavoriteBrands = (favorites: MarketProduct[], limit = 3): string[] => {
   const counts = new Map<string, number>()
   for (const fav of favorites) {

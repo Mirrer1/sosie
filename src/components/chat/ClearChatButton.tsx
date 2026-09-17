@@ -30,7 +30,7 @@ const ClearChatButton = () => {
     setOpen(next)
   }
 
-  // 확인 시 ChatRoot로 이벤트 전달 후 모달 닫기
+  // 확인 시 대화 지우기 이벤트를 보내고 모달 닫기
   const handleConfirm = () => {
     window.dispatchEvent(new CustomEvent('sosie:clear-chat'))
     setOpen(false)

@@ -7,7 +7,7 @@ export const marketProductSchema = z.object({
   name: z.string(),
   price: z.number().int().nonnegative(),
   imageUrl: z.string().url(),
-  productUrl: z.string(), // 직링크로 이동하는 내부 경로
+  productUrl: z.string(), // 구매 링크 이동 경로
   mall: z.string(),
   styles: z.array(z.string()).optional(), // AI가 태깅한 스타일
   subcategory: z.string().optional(), // AI가 태깅한 세부 품목

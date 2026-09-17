@@ -1,5 +1,5 @@
 import { COLLECT_QUERIES } from '@/lib/catalog/collectQueries'
-import { isMusinsaMall, isTrustedMall, normalizeMall } from '@/lib/catalog/malls'
+import { isSupportedMall, normalizeMall } from '@/lib/catalog/malls'
 import { type ShoppingResult, searchGoogleShopping } from '@/lib/catalog/serpApi'
 import { type ProductTag, tagProducts } from '@/lib/catalog/tagProducts'
 import { getSql } from '@/lib/db'
@@ -27,7 +27,7 @@ export type CollectSummary = {
 // 공백을 없애고 소문자로 정규화
 const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase()
 
-// 구글 쇼핑 결과를 수집 항목으로 변환하고 필수 필드가 없으면 제외
+// 구글 쇼핑 결과를 수집 항목으로 변환
 export const mapShoppingResult = (result: ShoppingResult): CollectedItem | null => {
   if (!result.product_id || !result.title || !result.thumbnail || !result.product_link) return null
   if (!result.source || !result.extracted_price || result.extracted_price <= 0) return null
@@ -42,17 +42,15 @@ export const mapShoppingResult = (result: ShoppingResult): CollectedItem | null 
   }
 }
 
-// 상품명에 중고와 도매 같은 노이즈 단어가 있는지 여부
+// 노이즈 상품명 여부
 export const isNoiseTitle = (title: string): boolean =>
   NOISE_KEYWORDS.some((keyword) => title.includes(keyword))
 
-// 태그 결과로 저장 여부 판단
-export const shouldStore = (item: CollectedItem, tag: ProductTag): boolean => {
-  if (!tag.isFashion || isNoiseTitle(item.title)) return false
-  return isMusinsaMall(item.mall) || isTrustedMall(item.mall) || tag.mallTrusted
-}
+// 지원 판매처의 패션 상품만 저장
+export const shouldStore = (item: CollectedItem, tag: ProductTag): boolean =>
+  tag.isFashion && !isNoiseTitle(item.title) && isSupportedMall(item.mall)
 
-// 검색 대상 필드를 모아 정규화한 검색 문자열 생성
+// 정규화한 검색 문자열 생성
 export const buildSearchText = (item: CollectedItem, tag: ProductTag): string =>
   normalize(
     [
@@ -68,7 +66,7 @@ export const buildSearchText = (item: CollectedItem, tag: ProductTag): string =>
     ].join(' '),
   )
 
-// 검색어 하나를 수집해 기존 상품은 가격과 발견일을 갱신하고 새 상품만 태깅해 저장
+// 검색어 하나를 수집해 기존 상품은 갱신하고 새 상품만 태깅해 저장
 export const collectQuery = async (query: string): Promise<CollectSummary> => {
   const sql = getSql()
   const results = await searchGoogleShopping(query)
@@ -76,7 +74,7 @@ export const collectQuery = async (query: string): Promise<CollectSummary> => {
     ...new Map(
       results
         .map(mapShoppingResult)
-        .filter((item): item is CollectedItem => item !== null)
+        .filter((item): item is CollectedItem => item !== null && isSupportedMall(item.mall))
         .map((item) => [item.id, item]),
     ).values(),
   ]
@@ -168,7 +166,7 @@ export const collectQuery = async (query: string): Promise<CollectSummary> => {
   return { query, fetched: items.length, updated: seen.length, inserted }
 }
 
-// 수집한 지 가장 오래된 검색어부터 개수만큼 선택
+// 오래된 검색어부터 선택
 export const pickDueQueries = async (count: number): Promise<string[]> => {
   const sql = getSql()
   await sql.query(

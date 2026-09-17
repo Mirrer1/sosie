@@ -1,5 +1,6 @@
 import { tool } from 'ai'
 
+import { SUPPORTED_MALL_NAMES } from '@/lib/catalog/malls'
 import { rowToMarketProduct } from '@/lib/catalog/mapProduct'
 import { getSql } from '@/lib/db'
 import { type ProductRow } from '@/types/catalog'
@@ -14,7 +15,7 @@ import {
 
 const CANDIDATE_LIMIT = 300
 const RETURN_COUNT = 6
-const POOL_COUNT = 18
+const POOL_COUNT = 30
 const KEYWORD_SCORE = 3
 const SUBCATEGORY_SCORE = 4
 const BRAND_SCORE = 4
@@ -23,8 +24,11 @@ const PREFERRED_BRAND_SCORE = 3
 const FAVORITE_STYLE_SCORE = 2
 const FAVORITE_PRICE_SCORE = 2
 const EXACT_GENDER_SCORE = 2
+const OTHER_MALL_SCORE = 3
 const PRICE_BONUS = 2
 const MAX_PER_BRAND = 2
+const OTHER_MALL_SLOTS = 3
+const MAX_REPEATED_PREFERRED = 2
 const MIN_WORD_LENGTH = 2
 
 // 사용자가 말한 단어를 상품명 표기로 매핑
@@ -66,6 +70,8 @@ const STYLE_KEYWORDS: Record<string, string[]> = {
   스포티: ['트랙', '져지', '조거', '나일론', '트레이닝'],
   포멀: ['슬랙스', '셋업', '테일러드', '드레스'],
   아메카지: ['치노', '코듀로이', '워크', '셀비지'],
+  클래식: ['테일러드', '옥스포드', '트위드', '울'],
+  고프코어: ['바람막이', '고어텍스', '플리스', '아노락', '윈드'],
 }
 
 // 검색어에 들어 있으면 성별 필터로 바꾸는 단어
@@ -76,13 +82,14 @@ const GENDER_KEYWORDS: Record<ProductGender, string[]> = {
 
 type ProductGender = '남성' | '여성'
 
-// 검색 대상 문자열을 함께 가진 내부 후보 상품
+// 검색 문자열을 가진 후보 상품
 export type CandidateProduct = MarketProduct & { searchText?: string }
 
-// 프로필과 찜 요약을 서버에서 검색에 반영하는 인스턴스 옵션
+// 요청마다 주입하는 검색 옵션
 export type SearchContext = {
   profile?: Profile | null
   favorites?: FavoriteSignals | null
+  shownIds?: string[] // 이미 보여준 상품 ID
 }
 
 // 요청 조건과 별개로 가산점만 주는 사용자 취향
@@ -117,7 +124,7 @@ export const styleHints = (styles?: string[]): string[] => {
   return [...result]
 }
 
-// 상품이 선호 스타일 태그나 특징 단어를 하나라도 가지는지 여부
+// 선호 스타일 일치 여부
 export const matchesStyle = (
   product: { name: string; brand: string; styles?: string[] },
   styles?: string[],
@@ -143,13 +150,13 @@ const weightedPickIndex = (length: number): number => {
   return index
 }
 
-// DB 행을 검색 대상 문자열까지 가진 후보로 매핑
+// DB 행을 후보 상품으로 매핑
 export const mapProductRow = (row: ProductRow): CandidateProduct => ({
   ...rowToMarketProduct(row),
   searchText: row.search_text,
 })
 
-// 후보에서 검색 대상 문자열을 빼고 응답용 상품으로 변환
+// 후보를 응답용 상품으로 변환
 const toMarketProduct = ({ searchText, ...product }: CandidateProduct): MarketProduct => {
   void searchText
   return product
@@ -162,7 +169,7 @@ const matchesPrice = (product: MarketProduct, priceMin?: number, priceMax?: numb
   return true
 }
 
-// 검색 키워드에 같은 말을 더해 매칭 폭을 넓힘
+// 키워드에 동의어 추가
 export const expandKeywords = (keywords: string[]): string[] => {
   const result = new Set<string>()
   for (const keyword of keywords) {
@@ -173,7 +180,7 @@ export const expandKeywords = (keywords: string[]): string[] => {
   return [...result]
 }
 
-// 동의어와 띄어쓴 단어까지 펼쳐 DB 조회용 정규화 키워드 생성
+// DB 조회용 키워드 생성
 export const buildSearchKeywords = (keywords: string[]): string[] => {
   const words = keywords.flatMap((keyword) => [keyword, ...keyword.split(/\s+/)])
   const expanded = expandKeywords(words)
@@ -182,7 +189,7 @@ export const buildSearchKeywords = (keywords: string[]): string[] => {
   return [...new Set(expanded)]
 }
 
-// 검색어의 성별 단어를 필터로 옮기고 없으면 프로필 성별을 쓰며 AI가 생략한 스타일과 예산도 프로필로 채움
+// 검색어 성별을 필터로 옮기고 생략된 조건을 프로필로 채움
 export const resolveSearchInput = (
   input: SearchProductsInput,
   profile?: Profile | null,
@@ -197,7 +204,6 @@ export const resolveSearchInput = (
     return !matched
   })
 
-  // 이번 요청에 예산이 하나라도 있으면 프로필 예산과 섞지 않음
   const hasRequestBudget = input.priceMin !== undefined || input.priceMax !== undefined
 
   return {
@@ -222,13 +228,13 @@ export const buildPreferences = (
   favoritePriceRange: favorites?.priceRange,
 })
 
-// 키워드가 검색 대상 문자열에 하나도 없으면 제외
+// 키워드 일치 여부
 export const matchesKeywords = (product: CandidateProduct, keywords: string[]): boolean => {
   const haystack = haystackOf(product)
   return keywords.some((keyword) => haystack.includes(normalize(keyword)))
 }
 
-// 상품명 정규화 기준으로 중복을 제거해 몰만 다른 동일 상품은 하나만 남김
+// 같은 이름의 중복 상품 제거
 export const dedupeByName = <T extends MarketProduct>(products: T[]): T[] => {
   const seen = new Set<string>()
   const result: T[] = []
@@ -241,7 +247,7 @@ export const dedupeByName = <T extends MarketProduct>(products: T[]): T[] => {
   return result
 }
 
-// 키워드, 세부 품목, 브랜드, 스타일, 예산 근접도에 선호 브랜드와 찜 취향을 더한 적합도 점수
+// 요청과 취향 기준 적합도 점수
 export const scoreProduct = (
   product: CandidateProduct,
   input: SearchProductsInput,
@@ -265,6 +271,7 @@ export const scoreProduct = (
     score += FAVORITE_STYLE_SCORE
   }
   if (preferences?.gender && product.gender === preferences.gender) score += EXACT_GENDER_SCORE
+  if (input.includeOtherMalls && product.mall !== '무신사') score += OTHER_MALL_SCORE
   const range = preferences?.favoritePriceRange
   const hasBudget = input.priceMin !== undefined || input.priceMax !== undefined
   if (!hasBudget && range && product.price >= range.min && product.price <= range.max) {
@@ -281,13 +288,13 @@ export const scoreProduct = (
   return score
 }
 
-// 후보를 예산, 키워드, 중복, 점수 기준으로 걸러 상위 풀 구성
+// 후보를 걸러 점수순으로 정렬하고 새 상품을 앞에 둔 풀 구성
 export const buildOutput = (
   candidates: CandidateProduct[],
   input: SearchProductsInput,
   preferences?: SearchPreferences,
+  shownIds: string[] = [],
 ): { products: CandidateProduct[] } => {
-  // 예산 내 결과가 적으면 예산 밖도 포함하되 근접도 점수로 예산 내 우선
   const priced = candidates.filter((p) => matchesPrice(p, input.priceMin, input.priceMax))
   const pool = priced.length >= RETURN_COUNT ? priced : candidates
 
@@ -295,16 +302,27 @@ export const buildOutput = (
   const matched = pool.filter((p) => matchesKeywords(p, expanded.keywords))
   const base = matched.length > 0 ? matched : pool
 
-  const products = dedupeByName(base)
+  const ranked = dedupeByName(base)
     .map((product) => ({ product, score: scoreProduct(product, expanded, preferences) }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, POOL_COUNT)
     .map((entry) => entry.product)
+
+  const shown = new Set(shownIds)
+  const unseen = ranked.filter((p) => !shown.has(p.id))
+  const seen = ranked.filter((p) => shown.has(p.id))
+  const others = input.includeOtherMalls ? unseen.filter((p) => p.mall !== '무신사') : []
+  const products = [
+    ...new Set([
+      ...unseen.slice(0, POOL_COUNT),
+      ...others.slice(0, POOL_COUNT),
+      ...seen.slice(0, POOL_COUNT),
+    ]),
+  ]
 
   return { products }
 }
 
-// 키워드가 하나라도 걸리는 상품을 요청 브랜드, 예산, 매칭 수, 선호 브랜드 순으로 DB에서 조회
+// 키워드가 걸리는 후보 상품을 DB에서 조회
 const fetchCandidates = async (
   { input, gender }: ResolvedSearch,
   preferences: SearchPreferences,
@@ -314,47 +332,61 @@ const fetchCandidates = async (
 
   const rows = await getSql().query(
     `select * from products p
-    where ($2::boolean or p.mall = '무신사')
-      and ($6::text is null or p.gender in ($6::text, '공용'))
+    where (p.mall = '무신사' or ($8::boolean and p.mall = any($9::text[])))
+      and ($5::text is null or p.gender in ($5::text, '공용'))
       and exists (select 1 from unnest($1::text[]) k where p.search_text like '%' || k || '%')
     order by
-      (case when $3 <> '' and p.search_text like '%' || $3 || '%' then 1 else 0 end) desc,
-      (case when ($7::int is null or p.price >= $7::int) and ($8::int is null or p.price <= $8::int)
+      (case when $2 <> '' and p.search_text like '%' || $2 || '%' then 1 else 0 end) desc,
+      (case when $8::boolean and p.mall <> '무신사' then 1 else 0 end) desc,
+      (case when ($6::int is null or p.price >= $6::int) and ($7::int is null or p.price <= $7::int)
         then 1 else 0 end) desc,
       (select count(*) from unnest($1::text[]) k where p.search_text like '%' || k || '%') desc,
-      (case when replace(lower(p.brand), ' ', '') = any($4::text[]) then 1 else 0 end) desc,
+      (case when replace(lower(p.brand), ' ', '') = any($3::text[]) then 1 else 0 end) desc,
       random()
-    limit $5`,
+    limit $4`,
     [
       keywords,
-      input.includeOtherMalls ?? false,
       input.brand ? normalize(input.brand).replace(/[%_\\]/g, '') : '',
       preferences.brands,
       CANDIDATE_LIMIT,
       gender,
       input.priceMin ?? null,
       input.priceMax ?? null,
+      input.includeOtherMalls ?? false,
+      SUPPORTED_MALL_NAMES,
     ],
   )
   return (rows as ProductRow[]).map(mapProductRow)
 }
 
-// 요청이나 프로필 스타일이 없으면 찜한 상품의 스타일을 우선 채울 스타일로 사용
+// 요청과 프로필 스타일이 없으면 찜 스타일 사용
 export const pickStyles = (input: SearchProductsInput, preferences: SearchPreferences) =>
   input.styles?.length ? input.styles : preferences.favoriteStyles
 
-// 후보에서 스타일 맞는 상품을 우선하고 브랜드당 개수를 제한해 가중 랜덤으로 선택
-export const pickProducts = (products: CandidateProduct[], styles?: string[]) => {
-  const onStyle = products.filter((p) => matchesStyle(p, styles))
-  const offStyle = products.filter((p) => !matchesStyle(p, styles))
+// 후보 선택 옵션
+export type PickOptions = {
+  styles?: string[]
+  brands?: string[] // 정규화한 프로필 선호 브랜드와 찜 브랜드
+  shownIds?: string[]
+}
+
+// 선호 상품과 새 상품을 우선해 가중 랜덤으로 선택
+export const pickProducts = (
+  products: CandidateProduct[],
+  { styles, brands = [], shownIds = [] }: PickOptions = {},
+) => {
+  const shown = new Set(shownIds)
+  const isPreferred = (p: CandidateProduct) =>
+    matchesStyle(p, styles) || brands.includes(normalize(p.brand))
   const picked: CandidateProduct[] = []
   const overflow: CandidateProduct[] = []
   const brandCount = new Map<string, number>()
 
-  // 풀에서 가중 랜덤으로 뽑되 브랜드 한도 초과분은 따로 보관
-  const pickFrom = (items: CandidateProduct[]) => {
+  // 브랜드 한도 안에서 가중 랜덤으로 뽑기
+  const pickFrom = (items: CandidateProduct[], limit = RETURN_COUNT) => {
     const pool = [...items]
-    while (picked.length < RETURN_COUNT && pool.length > 0) {
+    let count = 0
+    while (picked.length < RETURN_COUNT && count < limit && pool.length > 0) {
       const [item] = pool.splice(weightedPickIndex(pool.length), 1)
       const brand = normalize(item.brand)
       if ((brandCount.get(brand) ?? 0) >= MAX_PER_BRAND) {
@@ -363,12 +395,17 @@ export const pickProducts = (products: CandidateProduct[], styles?: string[]) =>
       }
       brandCount.set(brand, (brandCount.get(brand) ?? 0) + 1)
       picked.push(item)
+      count++
     }
   }
-  pickFrom(onStyle)
-  pickFrom(offStyle)
+  pickFrom(products.filter((p) => isPreferred(p) && !shown.has(p.id)))
+  pickFrom(
+    products.filter((p) => isPreferred(p) && shown.has(p.id)),
+    MAX_REPEATED_PREFERRED,
+  )
+  pickFrom(products.filter((p) => !isPreferred(p) && !shown.has(p.id)))
+  pickFrom(products.filter((p) => !isPreferred(p) && shown.has(p.id)))
 
-  // 브랜드가 부족하면 한도 무시하고 채움
   for (const item of overflow) {
     if (picked.length >= RETURN_COUNT) break
     picked.push(item)
@@ -376,19 +413,49 @@ export const pickProducts = (products: CandidateProduct[], styles?: string[]) =>
   return picked
 }
 
-// 프로필과 찜 요약을 서버에서 반영하는 searchProducts 인스턴스 생성
-export const createSearchProducts = ({ profile, favorites }: SearchContext = {}) =>
+// 다른 판매처 요청이면 다른 판매처 상품에 자리를 먼저 배정
+export const pickWithOtherMalls = (
+  products: CandidateProduct[],
+  options: PickOptions,
+  includeOtherMalls?: boolean,
+) => {
+  if (!includeOtherMalls) return pickProducts(products, options)
+  const reserved = pickProducts(
+    products.filter((p) => p.mall !== '무신사'),
+    options,
+  ).slice(0, OTHER_MALL_SLOTS)
+  const rest = pickProducts(
+    products.filter((p) => !reserved.includes(p)),
+    options,
+  ).slice(0, RETURN_COUNT - reserved.length)
+  return [...rest, ...reserved]
+}
+
+// 예산 밖 상품 포함 여부
+export const hasOutOfBudget = (products: MarketProduct[], input: SearchProductsInput) =>
+  (input.priceMin !== undefined || input.priceMax !== undefined) &&
+  products.some((p) => !matchesPrice(p, input.priceMin, input.priceMax))
+
+// 프로필과 찜을 반영하는 searchProducts 생성
+export const createSearchProducts = ({ profile, favorites, shownIds }: SearchContext = {}) =>
   tool({
     description:
-      '매일 수집한 무신사 상품 풀에서 키워드와 가격대로 상품을 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)와 계절, 핏, 소재, 성별(남자/여자)을 함께 넣어 매칭률을 높이세요. 프로필의 스타일, 선호 브랜드, 예산과 찜한 상품의 취향은 서버가 자동 반영합니다. 기본으로 무신사 상품만 반환합니다.',
+      '매일 수집한 상품 풀에서 키워드와 가격대로 상품을 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)와 계절, 핏, 소재, 성별(남자/여자)을 함께 넣어 매칭률을 높이세요. 프로필의 스타일, 선호 브랜드, 예산과 찜한 상품의 취향은 서버가 자동 반영합니다. 기본으로 무신사 상품만 반환합니다.',
     inputSchema: searchProductsInputSchema,
     execute: async (input): Promise<SearchProductsOutput> => {
       const resolved = resolveSearchInput(input, profile)
       const preferences = { ...buildPreferences(profile, favorites), gender: resolved.gender }
       const candidates = await fetchCandidates(resolved, preferences)
-      const { products } = buildOutput(candidates, resolved.input, preferences)
-      const picked = pickProducts(products, pickStyles(resolved.input, preferences))
-      return { products: picked.map(toMarketProduct) }
+      const { products } = buildOutput(candidates, resolved.input, preferences, shownIds)
+      const picked = pickWithOtherMalls(
+        products,
+        { styles: pickStyles(resolved.input, preferences), brands: preferences.brands, shownIds },
+        resolved.input.includeOtherMalls,
+      )
+      return {
+        products: picked.map(toMarketProduct),
+        outOfBudget: hasOutOfBudget(picked, resolved.input),
+      }
     },
   })
 

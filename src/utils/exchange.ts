@@ -9,7 +9,7 @@ type CachedRates = {
 // 오늘 날짜 문자열
 const today = (): string => new Date().toISOString().slice(0, 10)
 
-// 당일 캐시된 환율을 반환하되 없거나 지난 날짜면 null
+// 당일 캐시 환율 조회
 export const loadRates = (): Record<string, number> | null => {
   if (typeof window === 'undefined') return null
   try {
@@ -32,7 +32,7 @@ export const saveRates = (rates: Record<string, number>): void => {
   }
 }
 
-// KRW 기준 환율을 외부 API에서 조회하되 실패하면 null
+// 외부 API로 KRW 기준 환율 조회
 export const fetchRates = async (): Promise<Record<string, number> | null> => {
   try {
     const res = await fetch(API_URL)

@@ -18,7 +18,7 @@ const ITEM_VARIANTS = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
 } as const
 
-// 메시지 없을 때 환영 화면을 보여주며 예시 칩 클릭 시 즉시 전송
+// 대화가 없을 때 보이는 환영 화면과 예시 칩
 const ChatWelcome = ({ onExampleClick }: ChatWelcomeProps) => {
   const { t } = useLanguage()
   const examples = [t('welcome.example1'), t('welcome.example2'), t('welcome.example3')]

@@ -43,7 +43,7 @@ const TOTAL_STEPS = 4
 const toggle = (arr: string[], v: string): string[] =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]
 
-// 첫 진입, 헤더 버튼, 추천 이유 링크에서 호출되는 프로필 마법사
+// 프로필 입력 마법사
 const OnboardingDialog = ({
   open,
   initialProfile,
@@ -61,7 +61,7 @@ const OnboardingDialog = ({
   const [budget, setBudget] = useState<Profile['budget']>(initialProfile?.budget)
   const [brandInput, setBrandInput] = useState('')
 
-  // 열릴 때마다 현재 프로필로 state 재동기화
+  // 열릴 때 현재 프로필로 입력값 초기화
   useEffect(() => {
     if (!open) return
     setStyles(initialProfile?.styles ?? [])
