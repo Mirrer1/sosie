@@ -12,7 +12,7 @@
 
 ## 현재 상태
 
-라이브 배포까지 마친 단일 페이지 채팅 앱(`sosie-theta.vercel.app`). Gemini Streaming 채팅, Tool 3종(상품 검색, URL 파싱, 프로필 갱신), 이미지 입력, 온보딩 프로필과 대화 중 학습 확인 카드, 프로필과 찜 취향을 서버에서 반영하는 검색, AI 태그와 추천 이유와 비슷한 상품을 보여주는 상품 미리보기, 찜, 10개 언어와 가격 근사 환산, 다크 모드, SEO가 동작한다. 네이버 쇼핑 검색 API가 2026-07-31에 종료되어 상품 데이터는 SerpApi 구글 쇼핑을 매일 수집해 Gemini로 태깅한 Neon DB에서 검색하고, 구매 링크는 첫 클릭 때 직링크를 찾아 저장한다. 같은 상품이 여러 판매처에서 거의 수집되지 않아 가격비교 기능은 없앴다.
+라이브 배포까지 마친 단일 페이지 채팅 앱(`sosie-theta.vercel.app`). Gemini Streaming 채팅, Tool 3종(상품 검색, URL 파싱, 프로필 갱신), 이미지 입력, 온보딩 프로필과 대화 중 학습 확인 카드, 프로필과 찜 취향을 서버에서 반영하는 검색, AI 태그와 추천 이유와 비슷한 상품을 보여주는 상품 미리보기, 찜, 10개 언어와 가격 근사 환산, 다크 모드, SEO가 동작한다. 네이버 쇼핑 검색 API가 2026-07-31에 종료되어 상품 데이터는 SerpApi 구글 쇼핑을 매일 수집해 Gemini로 태깅한 Neon DB에서 검색한다. 검색은 기본 무신사, 요청 시 검색 주소를 확인한 지원 판매처 12곳까지 넓히고, 이전에 본 상품은 대화를 지워도 뒤로 보내 매번 다른 상품을 보여준다. 구매 링크는 상품 판매처로 가며 상품 페이지를 모르면 그 판매처 검색 결과로 보낸다. 같은 상품이 여러 판매처에서 거의 수집되지 않아 가격비교 기능은 없앴다.
 
 ## 문서 안내
 
@@ -35,7 +35,7 @@
 | `code/server.md`      | api, go 라우트, lib, scripts                        | Route Handler, Tool, DB 쿼리, 외부 API           |
 | `code/testing.md`     | `*.test.ts`, vitest 설정                            | Vitest 범위와 작성 방식                          |
 | `product/agent.md`    | chat 라우트, tools, tool 타입                       | 모델, Tool 구성, 시스템 프롬프트 원칙            |
-| `product/catalog.md`  | catalog, db, 검색 Tool, cron, go, scripts           | 데이터 소스, 수집, 검색 품질, 직링크             |
+| `product/catalog.md`  | catalog, db, 검색 Tool, cron, go, scripts           | 데이터 소스, 수집, 검색 품질, 구매 링크          |
 | `product/profile.md`  | profile 컴포넌트, 프로필 타입과 유틸, updateProfile | 프로필 루프, 온보딩, 예산, 학습 확인             |
 | `product/shopping.md` | product 컴포넌트, 찜과 추천 이유 유틸, 비슷한 상품  | 상품 미리보기, 찜 취향 신호                      |
 | `product/chat.md`     | chat, layout 컴포넌트, hooks, page                  | localStorage 저장, 헤더 이벤트, 입력, 표시       |
@@ -52,7 +52,7 @@
 | `/api/chat`           | Gemini Streaming + Tool Calling             |
 | `/api/cron/collect`   | 매일 상품 수집 (Vercel Cron, 03시 KST)      |
 | `/api/products/[id]/similar` | 상품 미리보기의 비슷한 상품           |
-| `/go/[id]`            | 판매처 상품 페이지로 302 이동               |
+| `/go/[id]`            | 판매처 상품 페이지나 판매처 검색으로 302 이동 |
 | `/robots.txt`, `/sitemap.xml`, `/opengraph-image` | SEO 파일 규약 |
 
 ## 자주 쓰는 명령어

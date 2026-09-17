@@ -7,6 +7,7 @@ paths:
 # 테스트 규칙
 
 - Vitest 단위 테스트만 둔다. `vitest.config.ts`가 `src/**/*.test.ts(x)`만 수집하고 환경은 `node`다. E2E는 없고 화면은 사용자가 확인한다
+- Node 22.11 이하에서는 `vitest.config.ts`가 ESM 플러그인을 `require`하지 못해 시작부터 실패한다. Node 22.12 이상을 쓴다
 - 테스트 파일은 대상 파일 옆에 `대상.test.ts`로 둔다
 - 순수 함수만 테스트한다. DB, SerpApi, Gemini, open-graph-scraper 호출은 테스트하지 않고, 검증할 로직을 export한 순수 함수로 분리해서 테스트한다
 - `describe`는 함수 이름, `it`은 한국어로 기대 동작을 한 문장으로 쓴다
