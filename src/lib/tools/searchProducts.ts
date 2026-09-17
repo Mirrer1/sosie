@@ -30,6 +30,7 @@ const MAX_PER_BRAND = 2
 const OTHER_MALL_SLOTS = 3
 const MAX_REPEATED_PREFERRED = 2
 const MIN_WORD_LENGTH = 2
+const COLOR_SCORE = 4
 
 // 사용자가 말한 단어를 상품명 표기로 매핑
 const KEYWORD_SYNONYMS: Record<string, string[]> = {
@@ -58,7 +59,105 @@ const KEYWORD_SYNONYMS: Record<string, string[]> = {
   원피스: ['드레스'],
   목도리: ['머플러', '스카프'],
   운동화: ['스니커즈'],
+  빨간: ['레드'],
+  빨간색: ['레드'],
+  빨강: ['레드'],
+  노란: ['옐로우'],
+  노란색: ['옐로우'],
+  노랑: ['옐로우'],
+  파란: ['블루'],
+  파란색: ['블루'],
+  파랑: ['블루'],
+  초록: ['그린'],
+  초록색: ['그린'],
+  검정: ['블랙'],
+  검정색: ['블랙'],
+  검은: ['블랙'],
+  까만: ['블랙'],
+  흰: ['화이트'],
+  흰색: ['화이트'],
+  하얀: ['화이트'],
+  회색: ['그레이'],
+  분홍: ['핑크'],
+  분홍색: ['핑크'],
+  보라: ['퍼플'],
+  보라색: ['퍼플'],
+  남색: ['네이비'],
+  갈색: ['브라운'],
 }
+
+const VIVID_COLORS = [
+  '레드',
+  '옐로우',
+  '오렌지',
+  '그린',
+  '블루',
+  '핑크',
+  '퍼플',
+  '민트',
+  '레몬',
+  '라임',
+  '코랄',
+  '네온',
+]
+const DARK_COLORS = [
+  '블랙',
+  '그레이',
+  '차콜',
+  '네이비',
+  '다크',
+  'black',
+  'gray',
+  'grey',
+  'charcoal',
+  'navy',
+]
+
+// 색상 분위기 표현을 가산점 색상과 감점 색상으로 변환
+const COLOR_MOODS: Array<{ words: string[]; include: string[]; exclude: string[] }> = [
+  {
+    words: ['비비드', '컬러풀', '화사', '밝은', '원색', '쨍한', '선명', '알록달록'],
+    include: VIVID_COLORS,
+    exclude: DARK_COLORS,
+  },
+  {
+    words: ['어두운', '무채색', '톤다운', '모노톤', '차분한'],
+    include: DARK_COLORS,
+    exclude: VIVID_COLORS,
+  },
+  {
+    words: ['파스텔', '연한', '은은한'],
+    include: ['라이트', '스카이', '민트', '라벤더', '크림', '베이비', '파스텔', '아이보리'],
+    exclude: DARK_COLORS,
+  },
+]
+
+// 상품명 매칭에서 빼는 색상 일반어
+const COLOR_FILLER_WORDS = ['컬러', '색상', '색깔', '색', '컬러감', '톤', '계열']
+
+// 색상 이름 목록
+const COLOR_NAMES = new Set([
+  ...VIVID_COLORS,
+  ...DARK_COLORS,
+  '화이트',
+  '베이지',
+  '브라운',
+  '카키',
+  '아이보리',
+  '크림',
+  '실버',
+  '골드',
+  '와인',
+  '버건디',
+  '올리브',
+  '라벤더',
+  '스카이',
+  '라이트',
+  '다른',
+  ...COLOR_FILLER_WORDS,
+])
+
+const REPEATED_NOTICE_COUNT = 3
 
 // 스타일을 상품명에 등장하는 특징 단어로 변환
 const STYLE_KEYWORDS: Record<string, string[]> = {
@@ -90,6 +189,8 @@ export type SearchContext = {
   profile?: Profile | null
   favorites?: FavoriteSignals | null
   shownIds?: string[] // 이미 보여준 상품 ID
+  previousKeywords?: string[] // 같은 대화의 직전 검색 키워드
+  conversationShownIds?: string[] // 같은 대화에서 보여준 상품 ID
 }
 
 // 요청 조건과 별개로 가산점만 주는 사용자 취향
@@ -98,12 +199,20 @@ export type SearchPreferences = {
   favoriteStyles: string[] // 찜한 상품에서 자주 보인 스타일
   favoritePriceRange?: { min: number; max: number } // 예산이 없을 때 참고할 찜 가격대
   gender?: ProductGender | null // 공용보다 앞세울 정확한 성별
+  colors?: ColorIntent | null // 이번 요청의 색상 분위기
 }
 
-// 프로필을 채운 검색 입력과 검색어에서 뽑은 성별
+// 가산점 색상과 감점 색상
+export type ColorIntent = {
+  include: string[]
+  exclude: string[]
+}
+
+// 프로필을 채운 검색 입력과 검색어에서 뽑은 조건
 export type ResolvedSearch = {
   input: SearchProductsInput
   gender: ProductGender | null
+  colors: ColorIntent | null
 }
 
 // 공백을 없애고 소문자로 정규화
@@ -189,13 +298,64 @@ export const buildSearchKeywords = (keywords: string[]): string[] => {
   return [...new Set(expanded)]
 }
 
+// 색상 이름이거나 색상 동의어인 단어 여부
+const isColorWord = (word: string): boolean => {
+  const normalized = normalize(word)
+  return (
+    COLOR_NAMES.has(normalized) ||
+    (KEYWORD_SYNONYMS[normalized]?.every((synonym) => COLOR_NAMES.has(synonym)) ?? false) ||
+    COLOR_MOODS.some((mood) => mood.words.some((w) => normalized.includes(w)))
+  )
+}
+
+// 검색어가 색상뿐이면 직전 검색의 품목 키워드를 앞에 붙임
+export const withPreviousItemKeywords = (keywords: string[], previous: string[] = []): string[] => {
+  const words = keywords.flatMap((keyword) => keyword.split(/\s+/)).filter(Boolean)
+  if (!words.every(isColorWord)) return keywords
+  const items = previous.filter((keyword) => !keyword.split(/\s+/).every(isColorWord))
+  return items.length > 0 ? [...new Set([...items, ...keywords])] : keywords
+}
+
+// 검색어의 색상 표현을 가산점 색상으로 분리
+export const extractColorIntent = (
+  keywords: string[],
+): { keywords: string[]; colors: ColorIntent | null } => {
+  const moods = new Set<(typeof COLOR_MOODS)[number]>()
+  const rest = keywords.flatMap((keyword) => {
+    const words = keyword.split(/\s+/).filter((word) => {
+      const normalized = normalize(word)
+      const mood = COLOR_MOODS.find((m) => m.words.some((w) => normalized.includes(w)))
+      if (mood) moods.add(mood)
+      return !mood && !COLOR_FILLER_WORDS.includes(normalized) && normalized !== '다른'
+    })
+    return words.length > 0 ? [words.join(' ')] : []
+  })
+
+  const colorKeywords = rest.filter((keyword) => keyword.split(/\s+/).every(isColorWord))
+  const itemKeywords = rest.filter((keyword) => !colorKeywords.includes(keyword))
+  const namedColors =
+    itemKeywords.length > 0 ? colorKeywords.flatMap((keyword) => expandKeywords([keyword])) : []
+
+  const include = [...new Set([...[...moods].flatMap((m) => m.include), ...namedColors])]
+  const exclude = [...new Set([...moods].flatMap((m) => m.exclude))]
+  const colors = include.length > 0 ? { include, exclude } : null
+  return { keywords: itemKeywords.length > 0 ? itemKeywords : rest, colors }
+}
+
+// 색상 일치 여부
+export const matchesColor = (product: CandidateProduct, colors: string[]): boolean => {
+  const haystack = normalize(`${product.colors?.join(' ') ?? ''} ${haystackOf(product)}`)
+  return colors.some((color) => haystack.includes(normalize(color)))
+}
+
 // 검색어 성별을 필터로 옮기고 생략된 조건을 프로필로 채움
 export const resolveSearchInput = (
   input: SearchProductsInput,
   profile?: Profile | null,
 ): ResolvedSearch => {
   let gender: ProductGender | null = profile?.gender ?? null
-  const rest = input.keywords.filter((keyword) => {
+  const { keywords: withoutColors, colors } = extractColorIntent(input.keywords)
+  const rest = withoutColors.filter((keyword) => {
     const word = normalize(keyword)
     const matched = (Object.keys(GENDER_KEYWORDS) as ProductGender[]).find((key) =>
       GENDER_KEYWORDS[key].includes(word),
@@ -208,9 +368,10 @@ export const resolveSearchInput = (
 
   return {
     gender,
+    colors,
     input: {
       ...input,
-      keywords: rest.length > 0 ? rest : input.keywords,
+      keywords: rest.length > 0 ? rest : withoutColors.length > 0 ? withoutColors : input.keywords,
       styles: input.styles?.length ? input.styles : profile?.styles,
       priceMin: hasRequestBudget ? input.priceMin : profile?.budget?.min,
       priceMax: hasRequestBudget ? input.priceMax : profile?.budget?.max,
@@ -272,6 +433,8 @@ export const scoreProduct = (
   }
   if (preferences?.gender && product.gender === preferences.gender) score += EXACT_GENDER_SCORE
   if (input.includeOtherMalls && product.mall !== '무신사') score += OTHER_MALL_SCORE
+  if (preferences?.colors && matchesColor(product, preferences.colors.include)) score += COLOR_SCORE
+  if (preferences?.colors && matchesColor(product, preferences.colors.exclude)) score -= COLOR_SCORE
   const range = preferences?.favoritePriceRange
   const hasBudget = input.priceMin !== undefined || input.priceMax !== undefined
   if (!hasBudget && range && product.price >= range.min && product.price <= range.max) {
@@ -368,16 +531,19 @@ export type PickOptions = {
   styles?: string[]
   brands?: string[] // 정규화한 프로필 선호 브랜드와 찜 브랜드
   shownIds?: string[]
+  colors?: ColorIntent | null // 있으면 색상으로 선호 판단
 }
 
 // 선호 상품과 새 상품을 우선해 가중 랜덤으로 선택
 export const pickProducts = (
   products: CandidateProduct[],
-  { styles, brands = [], shownIds = [] }: PickOptions = {},
+  { styles, brands = [], shownIds = [], colors }: PickOptions = {},
 ) => {
   const shown = new Set(shownIds)
   const isPreferred = (p: CandidateProduct) =>
-    matchesStyle(p, styles) || brands.includes(normalize(p.brand))
+    colors
+      ? matchesColor(p, colors.include) && !matchesColor(p, colors.exclude)
+      : matchesStyle(p, styles) || brands.includes(normalize(p.brand))
   const picked: CandidateProduct[] = []
   const overflow: CandidateProduct[] = []
   const brandCount = new Map<string, number>()
@@ -405,6 +571,7 @@ export const pickProducts = (
   )
   pickFrom(products.filter((p) => !isPreferred(p) && !shown.has(p.id)))
   pickFrom(products.filter((p) => !isPreferred(p) && shown.has(p.id)))
+  pickFrom(products.filter((p) => isPreferred(p) && shown.has(p.id) && !picked.includes(p)))
 
   for (const item of overflow) {
     if (picked.length >= RETURN_COUNT) break
@@ -437,24 +604,46 @@ export const hasOutOfBudget = (products: MarketProduct[], input: SearchProductsI
   products.some((p) => !matchesPrice(p, input.priceMin, input.priceMax))
 
 // 프로필과 찜을 반영하는 searchProducts 생성
-export const createSearchProducts = ({ profile, favorites, shownIds }: SearchContext = {}) =>
+export const createSearchProducts = ({
+  profile,
+  favorites,
+  shownIds,
+  previousKeywords,
+  conversationShownIds,
+}: SearchContext = {}) =>
   tool({
     description:
       '매일 수집한 상품 풀에서 키워드와 가격대로 상품을 검색합니다. 사용자가 옷, 신발, 가방 등 패션 아이템을 사고 싶다고 하면 호출하세요. 키워드에는 같은 뜻의 다른 표기(청바지/데님 등)와 계절, 핏, 소재, 성별(남자/여자)을 함께 넣어 매칭률을 높이세요. 프로필의 스타일, 선호 브랜드, 예산과 찜한 상품의 취향은 서버가 자동 반영합니다. 기본으로 무신사 상품만 반환합니다.',
     inputSchema: searchProductsInputSchema,
     execute: async (input): Promise<SearchProductsOutput> => {
-      const resolved = resolveSearchInput(input, profile)
-      const preferences = { ...buildPreferences(profile, favorites), gender: resolved.gender }
+      const keywords = withPreviousItemKeywords(input.keywords, previousKeywords)
+      const resolved = resolveSearchInput({ ...input, keywords }, profile)
+      const preferences = {
+        ...buildPreferences(profile, favorites),
+        gender: resolved.gender,
+        colors: resolved.colors,
+      }
       const candidates = await fetchCandidates(resolved, preferences)
       const { products } = buildOutput(candidates, resolved.input, preferences, shownIds)
       const picked = pickWithOtherMalls(
         products,
-        { styles: pickStyles(resolved.input, preferences), brands: preferences.brands, shownIds },
+        {
+          styles: pickStyles(resolved.input, preferences),
+          brands: preferences.brands,
+          shownIds,
+          colors: resolved.colors,
+        },
         resolved.input.includeOtherMalls,
       )
+      const repeatedCount = picked.filter((p) => conversationShownIds?.includes(p.id)).length
       return {
         products: picked.map(toMarketProduct),
         outOfBudget: hasOutOfBudget(picked, resolved.input),
+        repeatedCount,
+        notice:
+          repeatedCount >= REPEATED_NOTICE_COUNT
+            ? `이 조건에 맞는 상품은 대부분 이미 보여드렸어요. 결과 ${picked.length}개 중 ${repeatedCount}개가 앞서 보여준 상품이니 새로 찾았다고 말하지 말고, 가격대나 품목, 스타일을 넓혀보자고 제안하세요.`
+            : undefined,
       }
     },
   })

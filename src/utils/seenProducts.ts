@@ -15,6 +15,18 @@ export const collectShownIds = (messages: UIMessage[]): string[] =>
     ),
   )
 
+// 대화의 마지막 검색 키워드 추출
+export const collectLastSearchKeywords = (messages: UIMessage[]): string[] => {
+  const inputs = messages.flatMap((message) =>
+    message.parts.flatMap((part) =>
+      part.type === 'tool-searchProducts' && 'input' in part
+        ? [(part.input as { keywords?: string[] } | undefined)?.keywords ?? []]
+        : [],
+    ),
+  )
+  return inputs.filter((keywords) => keywords.length > 0).at(-1) ?? []
+}
+
 // 새 ID를 최근 순으로 합치고 최대 개수만 유지
 export const mergeSeenIds = (prev: string[], next: string[], max = MAX_SEEN): string[] => {
   const nextSet = new Set(next)

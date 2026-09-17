@@ -46,6 +46,8 @@ export const searchProductsInputSchema = z.object({
 export const searchProductsOutputSchema = z.object({
   products: z.array(marketProductSchema),
   outOfBudget: z.boolean().optional(), // 예산 밖 상품 포함 여부
+  repeatedCount: z.number().int().optional(), // 같은 대화에서 이전에 보여준 상품 수
+  notice: z.string().optional(), // AI 답변에 반드시 반영할 안내
 })
 
 export type SearchProductsInput = z.infer<typeof searchProductsInputSchema>

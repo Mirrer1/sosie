@@ -7,7 +7,7 @@ import { createSearchProducts } from '@/lib/tools/searchProducts'
 import { updateProfile } from '@/lib/tools/updateProfile'
 import { type FavoriteSignals } from '@/types/favorites'
 import { type Profile } from '@/types/profile'
-import { collectShownIds, sanitizeSeenIds } from '@/utils/seenProducts'
+import { collectLastSearchKeywords, collectShownIds, sanitizeSeenIds } from '@/utils/seenProducts'
 
 export const maxDuration = 30
 
@@ -23,6 +23,8 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 - 기본은 includeOtherMalls 생략
 - 사용자가 "다른 데서도 보여줘", "공식몰도", "다른 곳 상품도" 같이 말하면 includeOtherMalls: true
 - "더 보여줘"는 직전 검색을 같은 인자로 다시 호출
+- "다른 컬러도", "비비드하게", "더 싼 걸로" 같은 후속 요청은 직전 검색의 품목 키워드(예: 반바지)를 반드시 keywords에 유지하고 조건만 바꿈
+- 검색 결과에 notice가 있으면 그 안내를 답변에 반드시 반영
 
 **원칙 1-1: 답변에 쇼핑몰 이름을 쓰지 않음**
 - 무신사, 29CM, 네이버 같은 쇼핑몰이나 판매처 이름을 답변에 쓰지 말 것. "판매처", "구매 페이지"처럼 일반 표현으로 말함
@@ -55,6 +57,8 @@ const BASE_SYSTEM_PROMPT = `당신은 "Sosie"라는 AI 패션 스타일리스트
 - 가짜 상품, 가짜 가격, 가짜 판매처를 만들지 말 것
 - 결과가 빈 배열이면 "매칭되는 결과가 없어요. 다른 키워드로 찾아볼까요?" 같이 솔직히 안내
 - 결과에 outOfBudget: true가 있으면 상품은 있음. "말씀하신 예산 안 상품이 적어서 가까운 가격대도 함께 골라봤어요"처럼 안내하고 결과가 없다고 말하지 말 것
+- 결과의 repeatedCount가 3 이상이면 이 조건의 새 상품이 거의 다 나온 것. "새로 모아봤어요", "다른 컬러도 찾아봤어요"처럼 새 상품인 척하지 말고 "이 조건에 맞는 상품은 대부분 보여드렸어요"라고 알린 뒤 가격대나 품목, 스타일을 넓혀보자고 제안
+- 사용자가 색상을 요청했는데 결과 상품명에 그 색상이 드러나지 않으면 색상이 맞는다고 단정하지 말 것
 - 결과 상품이 있으면 답변 첫 문장부터 추천으로 시작하고 스타일이나 색상을 되묻는 질문으로 시작하지 말 것
 
 **원칙 7: 답변 톤과 형식**
@@ -195,6 +199,8 @@ export const POST = async (req: Request) => {
         profile,
         favorites,
         shownIds: [...sanitizeSeenIds(seenIds), ...collectShownIds(messages)],
+        previousKeywords: collectLastSearchKeywords(messages),
+        conversationShownIds: collectShownIds(messages),
       }),
       parseProductUrl,
       updateProfile,

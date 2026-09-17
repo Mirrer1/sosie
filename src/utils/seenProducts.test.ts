@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { collectShownIds, mergeSeenIds, sanitizeSeenIds } from './seenProducts'
+import {
+  collectLastSearchKeywords,
+  collectShownIds,
+  mergeSeenIds,
+  sanitizeSeenIds,
+} from './seenProducts'
 
 describe('collectShownIds', () => {
   it('완료된 searchProducts 결과의 상품 ID만 모음', () => {
@@ -44,5 +49,25 @@ describe('sanitizeSeenIds', () => {
   it('배열이 아니면 빈 배열', () => {
     expect(sanitizeSeenIds('a')).toEqual([])
     expect(sanitizeSeenIds(undefined)).toEqual([])
+  })
+})
+
+describe('collectLastSearchKeywords', () => {
+  it('대화의 마지막 searchProducts 키워드를 반환', () => {
+    const messages = [
+      {
+        id: 'm1',
+        role: 'assistant',
+        parts: [{ type: 'tool-searchProducts', input: { keywords: ['셔츠'] } }],
+      },
+      {
+        id: 'm2',
+        role: 'assistant',
+        parts: [{ type: 'tool-searchProducts', input: { keywords: ['반바지'] } }],
+      },
+    ] as unknown as Parameters<typeof collectLastSearchKeywords>[0]
+
+    expect(collectLastSearchKeywords(messages)).toEqual(['반바지'])
+    expect(collectLastSearchKeywords([])).toEqual([])
   })
 })

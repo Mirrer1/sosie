@@ -7,6 +7,7 @@ import {
   buildSearchKeywords,
   dedupeByName,
   expandKeywords,
+  extractColorIntent,
   hasOutOfBudget,
   mapProductRow,
   matchesKeywords,
@@ -17,6 +18,7 @@ import {
   resolveSearchInput,
   scoreProduct,
   styleHints,
+  withPreviousItemKeywords,
 } from './searchProducts'
 import { type ProductRow } from '@/types/catalog'
 
@@ -468,5 +470,80 @@ describe('buildOutput 다른 판매처 요청', () => {
     const output = buildOutput([...musinsa, other], { keywords: ['데님', '청바지'] })
 
     expect(output.products).toHaveLength(30)
+  })
+})
+
+describe('extractColorIntent', () => {
+  it('색상 분위기 표현과 색상 일반어를 검색어에서 빼고 색상 분위기로 변환', () => {
+    const { keywords, colors } = extractColorIntent(['반바지', '비비드 컬러', '컬러풀한'])
+
+    expect(keywords).toEqual(['반바지'])
+    expect(colors?.include).toContain('레드')
+    expect(colors?.exclude).toContain('블랙')
+  })
+
+  it('품목과 색상 이름이 함께 있으면 색상 이름은 가산점 색상으로 옮김', () => {
+    expect(extractColorIntent(['반바지', '베이지', '빨간'])).toEqual({
+      keywords: ['반바지'],
+      colors: { include: ['베이지', '빨간', '레드'], exclude: [] },
+    })
+  })
+
+  it('색상 표현이 없으면 검색어를 그대로 두고 null', () => {
+    expect(extractColorIntent(['반바지', '와이드'])).toEqual({
+      keywords: ['반바지', '와이드'],
+      colors: null,
+    })
+    expect(extractColorIntent(['베이지'])).toEqual({ keywords: ['베이지'], colors: null })
+  })
+})
+
+describe('pickProducts 색상 분위기', () => {
+  it('색상 분위기가 있으면 맞는 색상 상품을 먼저 채움', () => {
+    const dark = Array.from({ length: 6 }, (_, i) =>
+      candidate({ id: `d${i}`, brand: `다크${i}`, name: `쇼츠 블랙 ${i}`, colors: ['블랙'] }),
+    )
+    const vivid = [
+      candidate({ id: 'v1', brand: '비비드1', name: '쇼츠 레몬', colors: ['레몬'] }),
+      candidate({ id: 'v2', brand: '비비드2', name: '쇼츠 레드', colors: ['레드'] }),
+    ]
+    const { colors } = extractColorIntent(['비비드'])
+    const picked = pickProducts([...dark, ...vivid], { colors })
+
+    expect(picked.map((p) => p.id)).toEqual(expect.arrayContaining(['v1', 'v2']))
+  })
+})
+
+describe('pickProducts 작은 풀', () => {
+  it('새 상품이 모자라면 이미 본 선호 상품으로 끝까지 채움', () => {
+    const products = Array.from({ length: 6 }, (_, i) =>
+      candidate({ id: `s${i}`, brand: `브랜드${i}`, name: `빈티지 쇼츠 ${i}`, styles: ['빈티지'] }),
+    )
+    const picked = pickProducts(products, {
+      styles: ['빈티지'],
+      shownIds: products.map((p) => p.id),
+    })
+
+    expect(picked).toHaveLength(6)
+  })
+})
+
+describe('withPreviousItemKeywords', () => {
+  it('검색어가 색상뿐이면 직전 검색의 품목 키워드를 붙임', () => {
+    expect(withPreviousItemKeywords(['베이지', '그레이'], ['반바지', '쇼츠'])).toEqual([
+      '반바지',
+      '쇼츠',
+      '베이지',
+      '그레이',
+    ])
+    expect(withPreviousItemKeywords(['다른 컬러'], ['반바지', '비비드'])).toEqual([
+      '반바지',
+      '다른 컬러',
+    ])
+  })
+
+  it('품목이 있거나 직전 검색이 없으면 그대로', () => {
+    expect(withPreviousItemKeywords(['셔츠', '블루'], ['반바지'])).toEqual(['셔츠', '블루'])
+    expect(withPreviousItemKeywords(['베이지'], [])).toEqual(['베이지'])
   })
 })
