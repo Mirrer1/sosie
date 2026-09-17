@@ -2,7 +2,7 @@ import { collectQuery, pickDueQueries, removeStaleProducts } from '@/lib/catalog
 
 export const maxDuration = 300
 
-const DAILY_QUERY_COUNT = 4
+const DAILY_QUERY_COUNT = 2
 
 // 매일 오래된 검색어부터 수집하고 오래된 상품 정리
 export const GET = async (req: Request) => {
